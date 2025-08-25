@@ -1,0 +1,170 @@
+---
+alwaysApply: true
+---
+
+## Implementation Learnings — SnowBank Intelligence Demo (Historical)
+
+> **📋 NOTE**: This file contains historical learning context and operational guidance. **For current technical and functional requirements**, see:
+> - [technical_requirements.mdc](./technical_requirements.mdc) - Implementation constraints and patterns
+> - [functional_requirements.mdc](./functional_requirements.mdc) - Agent specifications and demo requirements
+
+## 1. Demo Success Metrics (Historical Achievements)
+
+### 1.1 Final Production Status
+- ✅ 5,000 customers, 25,000 loans, 336K financial records
+- ✅ All 3 Cortex Search services created successfully  
+- ✅ Dual semantic view architecture with proper data (25K+ rows)
+- ✅ 34 Norwegian banking documents with required phrases (generated via optimized Snowpark DataFrame approach)
+- ✅ Perfect referential integrity (0 violations)
+- ✅ Document generation performance: ~34 documents in ~3 seconds (vs ~8 minutes individually)
+
+### 1.2 Demo Scenario Validation Results
+- ✅ **Scenario 1**: Helio Salmon AS 360° (680.9M NOK, Nordic Bank Helgeland)
+- ✅ **Scenario 2**: Regional stress testing (267B NOK aquaculture portfolio) 
+- ✅ **Scenario 3**: Green bond reporting (623B NOK, 3,013 green loans)
+- ✅ **Scenario 4**: Alliance analytics (5 Nordic Banks, 534.9B NOK total assets)
+
+## 2. Architectural Decisions and Context
+
+### 2.1 Dual Semantic View Architecture Discovery
+**Challenge Identified**: Multi-path relationship between `MEMBER_BANKS` and `LOANS` was not supported by Snowflake semantic views.
+
+**Solution Delivered**: Separated banking data (`SNOWBANK_DEMO_SV`) and market data (`MARKET_PEER_ANALYSIS_SV`) into distinct semantic views.
+
+**Agent Enhancement**: Agent 1 (Relationship Manager) now has multiple Cortex Analyst tools:
+- `SnowBank_Portfolio_Analyst` for banking data queries
+- `Market_Peer_Analysis` for peer stock performance queries
+
+**Benefits Achieved**:
+- ✅ Clean semantic view architecture without relationship conflicts
+- ✅ Agent capabilities enhanced with domain-specific tools
+- ✅ Scalable pattern for complex multi-domain demonstrations
+
+### 2.2 Simplified Setup Architecture Discovery
+**Challenge Identified**: Dual script confusion (`main.py` vs `reset_demo.py`) and inconsistent object creation strategies.
+
+**Solution Delivered**: Consolidated into single `main.py` script with consistent approach:
+- Database: `IF NOT EXISTS`
+- All other objects: `CREATE OR REPLACE`
+- Always performs full demo setup with validation
+
+**Benefits Achieved**:
+- ✅ Single setup command: `python main.py`
+- ✅ Consistent object creation strategy
+- ✅ Eliminated operational confusion
+- ✅ Reliable setup every time
+
+## 3. Performance Breakthroughs
+
+### 3.1 Snowpark DataFrame Document Generation
+**Discovery**: Batch processing with literal model parameters achieved ~160x speedup.
+
+**Performance Results**:
+- **Before**: 8+ minutes for 31 documents (individual cortex.complete calls)
+- **After**: 3 seconds for 34 documents (Snowpark DataFrame batch processing)
+
+**Key Pattern Discovered**:
+```python
+# Group by model class and process separately due to literal parameter requirement
+for model_class in distinct_models:
+    model_prompts_df = prompts_df.filter(col("MODEL_CLASS") == lit(model_class))
+    generated_df = model_prompts_df.select(
+        cortex.complete(model_class, col("PROMPT_TEXT")).alias("CONTENT_MD")
+    )
+```
+
+## 4. Demo Intelligence Strategy Discovery
+
+### 4.1 Agent Tool Description Breakthrough
+**Problem Discovered**: Generic tool descriptions led to agent failure in Scenario 1 Step 2.
+
+**Solution Framework**: "Provide building blocks, not solutions"
+- ✅ Specific capabilities and available dimensions
+- ❌ Hardcoded query patterns or scenario guidance
+
+**Example Transformation**:
+```
+BEFORE: "Access to SnowBank semantic view for customer portfolio analysis"
+AFTER: "Access to Nordic Banking Alliance semantic view containing customer portfolios, loan exposures, and financial data. Query by customer names, industry sectors (Aquaculture, Maritime, etc.), geographic regions (Helgeland, Vestlandet, etc.)."
+```
+
+**Result**: Authentic AI problem-solving while enabling successful scenario completion.
+
+## 5. Data Accuracy and Quality Discoveries
+
+### 5.1 LTM Fee Calculation Alignment
+**Issue Discovered**: Semantic view calculated LTM fees as 0 NOK due to mismatch between calculation logic and actual data.
+
+**Root Cause**: Semantic view used `record_type = 'Fee Income'` while data contained `'FEE_REVENUE'` and `'COMMISSION'`.
+
+**Fix Applied**: Updated semantic view to use `record_type IN ('FEE_REVENUE', 'COMMISSION')`.
+
+**Result**: Helio Salmon AS LTM fees now show realistic 442K NOK.
+
+### 5.2 Demo Company Exposure Distribution Control
+**Issue Discovered**: Random loan generation created unrealistic peer comparisons (15-20x exposure differences).
+
+**Solution Implemented**: Added controlled loan generation for `DEMO_SEED_COMPANIES` to ensure realistic peer distributions for scenarios requiring "similar exposure levels".
+
+**Result**: Perfect peer distribution (568M - 2.5B NOK range) for Scenario 1 Step 2.
+
+### 5.3 Document Content Scenario Alignment  
+**Issue Discovered**: Scenario 4 Step 2 requested "Q4 2024 quarterly reports" but only 2023 annual reports existed.
+
+**Solution Implemented**: Added `QUARTERLY_REPORT` document type with Q4 2024-specific content generation.
+
+**Result**: Agent queries for "Q4 2024 quarterly reports" now succeed with relevant content.
+
+## 6. Brand Neutrality Implementation Context
+
+### 6.1 Generic Alliance Strategy
+**Achievement**: Successfully transformed from "Sparebank 1" specific demo to generic "Nordic Banking Alliance".
+
+**Files Updated**: 6 core files with systematic replacement of brand-specific references.
+
+**Narrative Maintained**: Compelling "Alliance Dilemma" story while being universally applicable.
+
+**Adaptability**: Demo can be easily adapted for any geographical banking alliance context.
+
+## 7. Operational Excellence Framework
+
+### 7.1 Validation Framework Achievement
+**5-Suite Validation System**:
+- Infrastructure, Data Quality, Scenario Readiness, Performance, Agent Integration
+- 80% success rate target with detailed failure analysis
+- 15-second validation runtime
+
+### 7.2 Production Deployment Pattern
+**Standard Operating Procedure**:
+1. `python main.py` - Complete setup (15-20 minutes)
+2. `python validate_demo.py --output summary` - Validation (15 seconds)  
+3. Configure agents per `demo_instructions.md`
+4. Execute 4 demo scenarios with 15-20 minute presentation
+
+## 8. Critical Success Factors Identified
+
+### 8.1 Data Completeness Requirements
+- Demo companies must exist in both banking and market data
+- LTM fee calculations must align with actual data generation patterns
+- Peer distributions must support "similar exposure" scenario requirements
+- Document types must match scenario time requirements (Q4 2024 vs 2023)
+
+### 8.2 Agent Intelligence Enablement  
+- Tool descriptions must provide specific capabilities without hardcoding solutions
+- Multiple tools per agent enable comprehensive problem-solving
+- Semantic view architecture must avoid multi-path relationship conflicts
+
+### 8.3 Operational Reliability
+- Single setup script eliminates operational confusion
+- Comprehensive validation catches data quality issues
+- Brand neutrality enables broad demo applicability
+
+---
+
+## References to Current Requirements
+
+**For implementation**: See [technical_requirements.mdc](./technical_requirements.mdc)
+**For functionality**: See [functional_requirements.mdc](./functional_requirements.mdc)  
+**For project status**: See [project_plan.mdc](./project_plan.mdc)
+
+This historical file documents the discovery process and context behind current requirements.

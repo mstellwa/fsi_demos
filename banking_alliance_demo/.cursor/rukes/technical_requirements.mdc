@@ -1,0 +1,229 @@
+---
+alwaysApply: true
+---
+
+## Technical Requirements — SnowBank Intelligence Demo
+
+## 1. Environment and connectivity
+
+### 1.1 Prerequisites
+- **Snowflake Account**: Cortex features enabled (Analyst + Search + Complete)
+- **Python Environment**: Python 3.8+ with packages from `requirements.txt`
+- **Database Access**: FSI_DEMOS database (pre-existing, not created by demo)
+- **Warehouse**: MEDIUM or LARGE warehouse for data generation and search indexing
+- **Permissions**: CREATE TABLE, CREATE VIEW, CREATE SERVICE, SELECT/INSERT on FSI_DEMOS.BANK_DEMO
+
+### 1.2 Connection Configuration
+- Use `connections.toml` for Snowpark session creation. Connection name configurable via `DEMO_CONFIG.CONNECTION_NAME` (default `sfseeurope-mstellwall-aws-us-west3`).
+- Session creation pattern: `Session.builder.config("connection_name", <CONNECTION_NAME>).create()`.
+- Required `~/.snowflake/connections.toml` format:
+  ```toml
+  [sfseeurope-mstellwall-aws-us-west3]
+  account = "your-account-identifier"
+  user = "your-username"
+  password = "your-password"
+  warehouse = "COMPUTE_WH"  # Will fallback to this if MEDIUM doesn't exist
+  database = "FSI_DEMOS"
+  schema = "BANK_DEMO"
+  role = "your-role"
+  ```
+
+### 1.3 Critical Database Context Management
+**CRITICAL**: Session creation must automatically set database context to prevent "Object does not exist" errors:
+```python
+session.sql("USE DATABASE FSI_DEMOS").collect()
+session.sql("USE SCHEMA BANK_DEMO").collect()
+```
+
+### 1.4 Warehouse Fallback Strategy
+- **Primary**: Use `MEDIUM` warehouse if available
+- **Fallback**: Use `COMPUTE_WH` if `MEDIUM` doesn't exist  
+- **Error Handling**: Handle warehouse errors gracefully with warnings, not failures
+
+- Reference: Creating Session with connections.toml — https://docs.snowflake.com/en/developer-guide/snowpark/python/creating-session#connect-by-using-the-connections-toml-file
+
+## 2. Object model (database/schema)
+- Database: `FSI_DEMOS` (pre-existing; not replaced).
+- Schema: `BANK_DEMO` (created or replaced by setup scripts).
+- All objects (tables, views, services) created with CREATE OR REPLACE; reset uses truncate-and-reseed.
+
+## 3. Tables (DDL high level)
+- `MEMBER_BANKS(MEMBER_BANK_ID VARCHAR, BANK_NAME VARCHAR, REGION VARCHAR, TOTAL_ASSETS NUMBER(38,2))`
+- `CUSTOMERS(CUSTOMER_ID VARCHAR, MEMBER_BANK_ID VARCHAR, CUSTOMER_NAME VARCHAR, CUSTOMER_TYPE VARCHAR, INDUSTRY_SECTOR VARCHAR, GEOGRAPHIC_REGION VARCHAR, CREDIT_SCORE_ORIGINATION INT)`
+- `LOANS(LOAN_ID VARCHAR, CUSTOMER_ID VARCHAR, MEMBER_BANK_ID VARCHAR, LOAN_TYPE VARCHAR, OUTSTANDING_BALANCE NUMBER(38,2), INTEREST_RATE FLOAT, ORIGINATION_DATE DATE, MATURITY_DATE DATE, PROPERTY_VALUE_ORIGINATION NUMBER(38,2), CURRENT_PROPERTY_VALUE NUMBER(38,2), LOAN_TO_VALUE_RATIO FLOAT, GREEN_BOND_FRAMEWORK_TAG BOOLEAN, GREEN_PROJECT_CATEGORY VARCHAR, LAST_CREDIT_REVIEW_DATE DATE)`
+- `FINANCIALS(RECORD_ID VARCHAR, CUSTOMER_ID VARCHAR, MEMBER_BANK_ID VARCHAR, RECORD_TYPE VARCHAR, RECORD_DATE DATE, AMOUNT NUMBER(38,2))`
+- `ALLIANCE_PERFORMANCE(REPORTING_YEAR INT, MEMBER_BANK_ID VARCHAR, SMB_LENDING_GROWTH_PCT FLOAT, COST_INCOME_RATIO FLOAT)`
+- `MARKET_DATA(TICKER VARCHAR, TRADE_DATE DATE, CLOSE_PRICE NUMBER(38,2), COMPANY_NAME VARCHAR, PEER_GROUP VARCHAR)`
+- `DOCUMENT_PROMPTS(DOC_ID VARCHAR, SCENARIO VARCHAR, DOC_TYPE VARCHAR, TARGET_ENTITY VARCHAR, PROMPT_TEXT VARCHAR, MODEL_CLASS VARCHAR, TEMPERATURE FLOAT, CREATED_AT TIMESTAMP_NTZ, STATUS VARCHAR)`
+- `DOCUMENTS(DOC_ID VARCHAR, SCENARIO VARCHAR, DOC_TYPE VARCHAR, TITLE VARCHAR, TARGET_ENTITY VARCHAR, CONTENT_MD VARCHAR, MODEL_CLASS VARCHAR, CREATED_AT TIMESTAMP_NTZ)`
+- `DEMO_CONFIG(KEY VARCHAR, VALUE VARCHAR)`
+- `RUN_REGISTRY(RUN_ID VARCHAR, STEP VARCHAR, PARAMS VARIANT, ROWS_WRITTEN NUMBER, STARTED_AT TIMESTAMP_NTZ, ENDED_AT TIMESTAMP_NTZ, STATUS VARCHAR)`
+
+## 4. Data generation
+- Primary: Snowpark DataFrames for all synthetic structured data.
+- Fallback: pandas DataFrames only when Snowpark cannot reasonably express the operation; write via `Session.write_pandas(..., quote_identifiers=False)` and ensure identifier-safe column names.
+- Use `Faker` and standard Python libs as needed.
+- Volumes: 5k customers, 25k loans, 24 months (configurable).
+- Determinism is not required; provide run metadata in `RUN_REGISTRY`.
+
+## 5. Unstructured generation (TXT/Markdown-only)
+### 5.1 Document Generation Strategy
+- Generate prompts dynamically into `DOCUMENT_PROMPTS` (35-50 documents per scenario).
+- Norwegian industry context: Include aquaculture regulations, renewable energy policies, maritime compliance, regional market analysis.
+- Use `snowflake.cortex.complete` against a Snowpark DataFrame to produce content into `DOCUMENTS.CONTENT_MD`; capture model_class/temperature.
+- Content stored directly in table; no files/stages required.
+- **Answerable phrases requirement**: Each document must contain specific phrases/data points that support the 4-5 step demo flows.
+
+### 5.2 Optimized Snowpark DataFrame Implementation (CRITICAL)
+**Performance Requirement**: Batch processing for ~160x speedup (3 seconds vs 8 minutes for 31 documents)
+
+**Implementation Pattern**:
+1. **Prompt Storage**: All prompts stored in `DOCUMENT_PROMPTS` table
+2. **Batch Processing**: Process all prompts for each model class in single dataframe operation
+3. **Direct Storage**: Use `save_as_table()` directly from generated dataframe
+
+**Critical Technical Constraint**:
+- `cortex.complete()` requires model parameter as string literal, not column reference
+- **Solution**: Group by model class and process each group separately
+- **Code Pattern**:
+  ```python
+  for model_class in distinct_models:
+      model_prompts_df = prompts_df.filter(col("MODEL_CLASS") == lit(model_class))
+      generated_df = model_prompts_df.select(
+          cortex.complete(model_class, col("PROMPT_TEXT")).alias("CONTENT_MD")
+      )
+      all_results.append(generated_df)
+  ```
+
+- Reference: Cortex Complete (Python) — https://docs.snowflake.com/en/developer-guide/snowpark-ml/reference/latest/api/cortex/snowflake.cortex.complete
+
+## 5.1 Norwegian industry-specific data generation
+- **Company naming patterns**: "{Norwegian-word} {Industry} AS/ASA" (e.g., "Helio Salmon AS", "Nordlys Maritime ASA")
+- **Geographic distribution**: Enforce realistic concentrations (Aquaculture in Helgeland, Tech in Østlandet/Trøndelag)
+- **Industry peer groups**: Map to Norwegian market sectors and actual Norwegian/Nordic stock tickers where appropriate
+- **Regulatory references**: Include Norwegian FSA, aquaculture regulations, renewable energy incentives
+
+## 6. Cortex Search services
+
+### 6.1 Service Configuration
+- Create 3 services with required ID and Title columns:
+  - `INTERNAL_POLICY_SEARCH_SVC`: Source `DOCUMENTS` where `DOC_TYPE='POLICY'`; Search column `CONTENT_MD`; ID `DOC_ID`; Title `TITLE`.
+  - `CLIENT_AND_MARKET_INTEL_SVC`: Source `DOCUMENTS` where `DOC_TYPE IN ('CRM_NOTE','NEWS')`; Search `CONTENT_MD`; ID `DOC_ID`; Title `TITLE`.
+  - `REPORTING_AND_COMPLIANCE_SVC`: Source `DOCUMENTS` where `DOC_TYPE IN ('ANNUAL_REPORT','LOAN_DOC','THIRD_PARTY')`; Search `CONTENT_MD`; ID `DOC_ID`; Title `TITLE`.
+- After creation, run comprehensive pre-warming queries per scenario to reduce first-hit latency.
+
+### 6.2 Cortex Search API Syntax (CRITICAL)
+**CORRECT SEARCH_PREVIEW syntax** - Use `SNOWFLAKE.CORTEX.SEARCH_PREVIEW` with JSON parameters:
+```sql
+SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+    'service_name',
+    '{"query": "search term", "limit": 5}'
+) as search_results
+```
+
+**DEPRECATED syntaxes (DO NOT USE)**:
+- ❌ `SEARCH_PREVIEW('service', 'query', limit)` 
+- ❌ `SEARCH_PREVIEW$V1('service', 'query', limit)`
+- ❌ Any syntax with separate arguments
+
+**Reference**: [Official SEARCH_PREVIEW documentation](https://docs.snowflake.com/en/sql-reference/functions/search_preview-snowflake-cortex)
+
+### 6.3 Search service pre-warming procedure
+Execute these queries immediately after service creation:
+- **INTERNAL_POLICY_SEARCH_SVC**: "forbearance", "payment holiday", "restructuring", "LTV breach"
+- **CLIENT_AND_MARKET_INTEL_SVC**: "algae bloom", "ISA", "sea lice", "aquaculture regulation"  
+- **REPORTING_AND_COMPLIANCE_SVC**: "renewable energy", "CO2 reduction", "BREEAM", "LEED", "SMB initiative"
+
+## 7. Semantic model / semantic view
+
+### 7.1 Semantic View Creation
+- Create `SNOWBANK_DEMO_SV` and `MARKET_PEER_ANALYSIS_SV` to cover all core entities with dual architecture.
+- Define measures and dimensions per functional requirements; include English-only synonyms.
+- Ensure PK–FK join paths are explicit and correct.
+- Reference: Semantic views overview — https://docs.snowflake.com/en/user-guide/views-semantic/overview
+
+### 7.2 Semantic View Query Syntax (CRITICAL)
+**WRONG**: `SELECT * FROM semantic_view_name` → "Unsupported feature" error
+
+**CORRECT**: Use `SEMANTIC_VIEW()` function with specific clauses:
+```sql
+SELECT * FROM SEMANTIC_VIEW(
+    semantic_view_name
+    DIMENSIONS dimension1, dimension2
+    METRICS metric1, metric2
+    FACTS fact1, fact2
+)
+```
+
+**Key Syntax Rules**:
+- Must specify at least one of: METRICS, DIMENSIONS, or FACTS
+- Cannot specify FACTS and METRICS in same query
+- When using FACTS + DIMENSIONS, all must be from same logical table
+- Order of clauses affects column order in results
+
+**Reference**: [Querying a semantic view](https://docs.snowflake.com/en/user-guide/views-semantic/querying#querying-a-semantic-view)
+
+## 8. Agents (Snowsight configuration tasks)
+- Create 4 agents in Snowsight; each agent adds Cortex Analyst (semantic view) and one Cortex Search service.
+- Set orchestration model to Claude 4.0; provide Response and Planning instructions per functional requirements.
+- Reference: Create an agent; add Analyst and Search tools — https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-intelligence#create-an-agent
+
+## 9. Configuration and reset
+- `DEMO_CONFIG` key/value drives counts, history, model class, connection name, and toggles.
+- Reset uses truncate of all demo tables and re-run of generators; objects (views/services) re-created with OR REPLACE as needed.
+
+## 10. Warehousing and cost
+- Use a `MEDIUM` warehouse for generation; `LARGE` acceptable for faster builds.
+- AISQL model class default `LARGE`, configurable; ensure cross-region availability where required.
+- Reference: AISQL availability — https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql#availability
+
+## 11. Data validation procedures
+Implement validation checks after data generation:
+- **Row count validation**: Verify expected volumes (5k customers, 25k loans, ±10% tolerance)
+- **Referential integrity**: All `CUSTOMER_ID` in `LOANS` exist in `CUSTOMERS`; all `MEMBER_BANK_ID` references valid
+- **Data distribution checks**: 
+  - Geographic concentration validation (Aquaculture primarily in Helgeland)
+  - Industry distribution matches Norwegian banking patterns
+  - Date ranges cover full 24-month period
+- **Green lending validation**: 15-25% of corporate loans tagged as green; all green loans have valid project categories
+- **Document corpus validation**: Each scenario has 35-50 documents; all planned query phrases exist in corpus
+
+## 12. Agent orchestration testing framework
+- **Tool call validation**: Each agent can successfully call both Cortex Analyst and assigned Search service
+- **Multi-step query testing**: Execute all 4-5 step scenarios end-to-end; verify each step produces relevant outputs
+- **Citation validation**: Search results include proper `DOC_ID` and `TITLE` references
+- **Cross-bank query validation**: Verify queries can span multiple `MEMBER_BANK_ID` values correctly
+
+## 13. Acceptance checks (technical)
+- All tables exist with validated row counts and referential integrity
+- Search services online and return relevant, Norwegian industry-specific passages for pre-warming queries
+- Semantic view resolves correctly; Cortex Analyst produces accurate SQL for all gold measures
+- All 4 agents successfully complete their full scenario flows (4-5 steps each) with proper tool orchestration
+- Agent responses include relevant citations and demonstrate cross-member-bank capabilities
+- Reset procedure completes successfully and reproduces validated data volumes
+
+## 14. LTM Fee Calculation Requirements (CRITICAL)
+Based on production validation, ensure semantic view calculations match actual data generation:
+- **FINANCIALS table patterns**: Generated data uses `RECORD_TYPE` values: `'FEE_REVENUE'`, `'COMMISSION'`, `'INTEREST_INCOME'`, `'TRADING_INCOME'`
+- **Semantic view calculations**: LTM fee metrics MUST use `IN ('FEE_REVENUE', 'COMMISSION')` not `= 'Fee Income'`
+- **Demo company validation**: Ensure companies like "Helio Salmon AS" have realistic LTM fees (e.g., 442K NOK)
+- **Validation requirement**: Include specific LTM fee checks for demo companies in setup validation
+- **Prevention**: Always verify semantic view metric calculations against actual data generation patterns before deployment
+
+## 15. Demo Company Exposure Control Requirements (PEER ANALYSIS)
+Based on Scenario 1 Step 2 testing, ensure demo companies support realistic peer comparisons:
+- **Peer scenario support**: Demo companies must have appropriate exposure distributions for "similar exposure" queries
+- **Controlled generation**: Use targeted loan amounts for demo companies in scenario-critical regions/industries
+- **Helgeland aquaculture requirement**: Minimum 4-5 companies with exposure ranges 25%-200% of primary demo company
+- **Validation requirement**: Test peer comparison queries during setup validation to ensure realistic results
+- **Prevention**: Avoid pure random generation for demo companies when scenarios require specific peer distributions
+
+## 16. Document Type Scenario Alignment Requirements (CONTENT MATCHING)
+Based on Scenario 4 Step 2 testing, ensure document generation aligns with scenario-specific requirements:
+- **Document type coverage**: Each scenario must generate all document types referenced in scenario steps
+- **Content timeframe alignment**: Generated content must match scenario-specific dates and timeframes (e.g., Q4 2024)
+- **STRATEGIC_INQUIRY requirements**: Must include both `ANNUAL_REPORT` and `QUARTERLY_REPORT` for comprehensive coverage
+- **Content keyword validation**: Generated documents must contain scenario-critical keywords and phrases
+- **Search corpus testing**: Validate agent search queries against generated document corpus during setup
+- **Prevention**: Map scenario steps to required document types before implementing document generation logic
+

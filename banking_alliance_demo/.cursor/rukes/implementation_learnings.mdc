@@ -1,0 +1,50 @@
+---
+alwaysApply: true
+---
+
+## Implementation Learnings — SnowBank Intelligence Demo
+
+> **⚠️ MIGRATION NOTICE**: This file has been consolidated into permanent requirements.
+
+## Current Requirements Documentation
+
+**For all technical implementation constraints and patterns:**
+→ **[technical_requirements.mdc](./technical_requirements.mdc)**
+
+**For all functional requirements and agent specifications:**  
+→ **[functional_requirements.mdc](./functional_requirements.mdc)**
+
+**For project planning and status:**
+→ **[project_plan.mdc](./project_plan.mdc)**
+
+## Historical Context
+
+**For historical learning context and operational achievements:**
+→ **[implementation_learnings_historical.mdc](./implementation_learnings_historical.mdc)**
+
+**For session accomplishments and status:**
+→ **[session_summary.mdc](./session_summary.mdc)**
+
+---
+
+## Quick Reference Summary
+
+### ✅ **Critical Technical Constraints** (see technical_requirements.mdc)
+- Connection configuration with database context management
+- Cortex Search API correct syntax (`SNOWFLAKE.CORTEX.SEARCH_PREVIEW` with JSON)
+- Semantic view query syntax (`SEMANTIC_VIEW()` function required)
+- Cortex Complete literal model parameter requirement
+- LTM fee calculation and demo company data alignment requirements
+
+### ✅ **Essential Functional Requirements** (see functional_requirements.mdc)  
+- Agent tool description strategy: "Provide building blocks, not solutions"
+- Brand neutrality requirements for universal demo applicability
+- Dual semantic view architecture for clean agent tooling
+- 4 demo scenarios with specific agent configurations
+
+### ✅ **Setup and Validation** (see technical_requirements.mdc)
+- Single setup command: `python main.py`
+- Validation command: `python validate_demo.py --output summary`
+- Agent configuration: Follow `demo_instructions.md`
+
+**All implementation details, constraints, and specifications are now consolidated in the requirements files above.**

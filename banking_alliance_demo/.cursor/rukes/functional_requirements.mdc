@@ -1,0 +1,234 @@
+---
+alwaysApply: true
+---
+
+## Functional Requirements — SnowBank Intelligence Demo
+
+## 1. Purpose and scope
+- **Goal**: Deliver a compelling, repeatable Snowflake Intelligence demo across four scenarios using one Snowflake user, all data in `FSI_DEMOS.BANK_DEMO`.
+- **Personas**: Relationship Manager, Risk Analyst, ESG Officer, Executive Leadership.
+- **Out of scope**: RBAC/user provisioning; non-Snowsight UI; code in this document.
+
+## 2. Assumptions and constraints
+- **Account**: Existing Snowflake account with `FSI_DEMOS` database. Schema `BANK_DEMO` will be created/managed by setup.
+- **Connection**: Use `connections.toml` with configurable `CONNECTION_NAME` (default `sfseeurope-mstellwall-aws-us-west3`).
+- **Model availability**: Large model class is available via Cortex Cross-region; single model class setting drives all unstructured generation.
+- **Performance**: Demo steps target quick responses but per-turn latency guarantees are not a requirement.
+- **Reset**: Truncate-and-reseed; all objects created with CREATE OR REPLACE (except database).
+
+## 3. Functional configuration surface (stored in `BANK_DEMO.DEMO_CONFIG`)
+- **CONNECTION_NAME** (string) — default `sfseeurope-mstellwall-aws-us-west3`.
+- **SCHEMA_NAME** (string) — default `BANK_DEMO`.
+- **MODEL_CLASS** (enum) — `SMALL | MEDIUM | LARGE`; default `LARGE` for unstructured generation.
+- **CUSTOMER_COUNT**: 5000; **LOAN_COUNT**: 25000; **HISTORY_MONTHS**: 24.
+- **WAREHOUSE_FOR_BUILD**: `MEDIUM` to `LARGE`.
+- **TICKER_SET**: Real tickers list; customers use synthetic company names.
+- **RESET_STRATEGY**: `TRUNCATE_AND_RESEED`.
+- **SCENARIO_TOGGLES**: Enable/disable scenario data generation.
+
+## 4. Data requirements
+### 4.1 Structured data (high level)
+- **Core entities**: `MEMBER_BANKS`, `CUSTOMERS`, `LOANS`, `FINANCIALS`, `ALLIANCE_PERFORMANCE`, `MARKET_DATA`.
+- **History**: 24 months rolling for transactional/market tables.
+- **Realism**:
+  - Recognizable market tickers with synthetic price histories and peer groups.
+  - Synthetic bank customer names; consistent geography/industry distributions.
+
+### 4.2 Unstructured data (TXT/Markdown-only)
+- **Storage**: No external files. Content stored directly in `DOCUMENTS.CONTENT_MD` (plain text or Markdown for layout).
+- **Volume**: 35–50 items per scenario (increased for richer RAG context).
+- **Coverage**: Content must contain answerable passages for planned questions. Include explicit "answerable phrases" for each demo step.
+- **Norwegian context**: Include industry-specific documents (aquaculture regulations, renewable energy policies, regional market reports).
+- **Prompting**: Dynamically generate rows in `DOCUMENT_PROMPTS`; use Python `complete()` over a Snowpark DataFrame to populate `DOCUMENTS` with model outputs and metadata.
+
+### 4.3 Norwegian Industry and Geographic Realism
+- **Industry sectors**: 'Aquaculture', 'Renewable Energy', 'Maritime', 'Real Estate Development', 'Technology Services', 'Tourism & Hospitality', 'Oil & Gas Services'
+- **Geographic regions**: 'Helgeland', 'Østlandet', 'Trøndelag', 'Vestlandet', 'Nord-Norge' (actual Norwegian regions)
+- **Company naming**: Synthetic Norwegian-style company names (e.g., "Helio Salmon AS", "Bergen Maritime Services", "Trondheim Tech Solutions")
+- **Concentration modeling**: Higher aquaculture concentration in Helgeland, tech in Østlandet/Trøndelag, maritime in Vestlandet
+
+### 4.4 Brand Neutrality Requirements
+**Objective**: Ensure demo is adaptable for any geographical banking alliance context
+
+**Generic Banking Alliance Naming**:
+- **Alliance Name**: "Nordic Banking Alliance" (not specific brand names)
+- **Bank Naming Pattern**: "Nordic Bank {Region}" (e.g., "Nordic Bank Helgeland", "Nordic Bank Østlandet")
+- **Narrative Context**: Generic regional banking federation challenges and opportunities
+
+**Implementation Requirements**:
+- All generated data must use generic bank names
+- Documents must reference generic alliance names  
+- Demo script must avoid specific brand references
+- Maintain compelling "Alliance Dilemma" narrative while being universally applicable
+
+**Adaptability**: Demo content can be easily adapted for any geographical banking alliance (e.g., "European Banking Alliance", "Asia-Pacific Banking Federation") by changing region names and maintaining the same structural approach
+
+## 5. Cortex Search services (three)
+- **INTERNAL_POLICY_SEARCH_SVC**
+  - Source: `SELECT DOC_ID, TITLE, CONTENT_MD FROM DOCUMENTS WHERE DOC_TYPE = 'POLICY'`
+  - Search column: `CONTENT_MD`; ID: `DOC_ID`; Title: `TITLE`.
+- **CLIENT_AND_MARKET_INTEL_SVC**
+  - Source: `SELECT DOC_ID, TITLE, CONTENT_MD FROM DOCUMENTS WHERE DOC_TYPE IN ('CRM_NOTE','NEWS')`
+  - Search column: `CONTENT_MD`; ID: `DOC_ID`; Title: `TITLE`.
+- **REPORTING_AND_COMPLIANCE_SVC**
+  - Source: `SELECT DOC_ID, TITLE, CONTENT_MD FROM DOCUMENTS WHERE DOC_TYPE IN ('ANNUAL_REPORT','LOAN_DOC','THIRD_PARTY')`
+  - Search column: `CONTENT_MD`; ID: `DOC_ID`; Title: `TITLE`.
+
+## 6. Semantic model requirements
+- Single semantic model `SNOWBANK_DEMO_SM` and semantic view `SNOWBANK_DEMO_SV`.
+- **Entities/joins**: Map all core tables with explicit PK–FK paths.
+- **Gold measures (English-only synonyms)**:
+  - Total Exposure = `SUM(LOANS.OUTSTANDING_BALANCE)` — "exposure", "credit exposure".
+  - LTV = `LOANS.LOAN_TO_VALUE_RATIO` — "loan to value", "LVR".
+  - Fee Revenue LTM = `SUM(FINANCIALS.AMOUNT)` filtered `RECORD_TYPE='FEE_REVENUE'` — "fees", "fee revenue".
+  - SMB Growth % = `ALLIANCE_PERFORMANCE.SMB_LENDING_GROWTH_PCT` — "SMB growth".
+  - Cost/Income Ratio = `ALLIANCE_PERFORMANCE.COST_INCOME_RATIO` — "C/I".
+  - Average Interest Rate = `AVG(LOANS.INTEREST_RATE)` — "avg rate".
+  - Green Portfolio % = `SUM(LOANS.OUTSTANDING_BALANCE WHERE GREEN_BOND_FRAMEWORK_TAG=TRUE) / SUM(LOANS.OUTSTANDING_BALANCE)` — "green percentage", "sustainable lending".
+  - Portfolio Concentration by Industry = `COUNT(DISTINCT CUSTOMER_ID) BY INDUSTRY_SECTOR` — "industry concentration", "sector exposure".
+  - Cross-Sell Ratio = `COUNT(DISTINCT FINANCIALS.RECORD_TYPE) BY CUSTOMER_ID` — "products per customer", "relationship depth".
+  - Average Loan Vintage = `AVG(DATEDIFF('month', ORIGINATION_DATE, CURRENT_DATE()))` — "portfolio age", "loan vintage".
+  - Post-Stress LTV = `OUTSTANDING_BALANCE / (CURRENT_PROPERTY_VALUE * 0.95)` — "stressed LTV", "shock LTV".
+- **Key dimensions**: Customer Name, Industry Sector, Geographic Region, Member Bank, Origination Year, Last Credit Review Date, Green Project Category, Loan Type.
+
+## 7. Agents (configured in Snowsight)
+
+### 7.0 Agent Architecture Requirements
+- **Global settings**
+  - Platform integration: Snowflake Intelligence.
+  - Orchestration model: Claude 4.0 (documented selection).
+  - Tools per agent: Multiple tools including dual Cortex Analyst capability and Cortex Search services.
+- **Dual Semantic View Support**: Banking view (`SNOWBANK_DEMO_SV`) + Market view (`MARKET_PEER_ANALYSIS_SV`)
+- **Multi-Tool Capability**: Agents can have multiple Cortex Analyst tools of same type
+- **Tool Description Strategy (CRITICAL)**: "Provide building blocks, not solutions"
+  
+  **Strategy Framework**: Provide building blocks for agents to solve challenges dynamically without hardcoding answers.
+  
+  **Tool Description Template**:
+  ```
+  "Access to [data source] containing [data types]. Query by [dimensions] including [examples]. Provides metrics like [metric examples] for [use case examples]."
+  ```
+  
+  **What TO Include**:
+  - ✅ **Specific capabilities**: Available dimensions, queryable metrics, data types
+  - ✅ **Example values**: "Aquaculture, Maritime, etc." and "Helgeland, Vestlandet, etc."
+  - ✅ **Query capabilities**: Filtering, sorting, aggregation possibilities
+  - ✅ **Use case context**: "for competitive benchmarking", "for risk assessment"
+  
+  **What NOT to Include**:
+  - ❌ **Scenario solutions**: Don't provide query patterns for demo steps
+  - ❌ **Hardcoded guidance**: Don't tell agents exactly what to look for
+  - ❌ **Pre-determined answers**: Don't reveal expected results or insights
+  - ❌ **Scripted responses**: Don't provide template responses for challenges
+
+### 7.1 Relationship_Manager_Agent (Holistic Client 360)
+- Tools (3 total - demonstrates multi-tool capability)
+  - Cortex Analyst (Banking): `SnowBank_Portfolio_Analyst` → `SNOWBANK_DEMO_SV`. Description: "Access to Nordic Banking Alliance semantic view containing customer portfolios, loan exposures, and financial data. Query by customer names, industry sectors (Aquaculture, Maritime, etc.), geographic regions (Helgeland, Vestlandet, etc.), loan types, and exposure amounts."
+  - Cortex Analyst (Market): `Market_Peer_Analysis` → `MARKET_PEER_ANALYSIS_SV`. Description: "Access to Norwegian/Nordic stock market data for peer analysis. Query by company names, stock tickers, peer groups (Aquaculture, Banking, Maritime, etc.), and trading dates."
+  - Cortex Search: `Client_Market_Intelligence_Search` → `CLIENT_AND_MARKET_INTEL_SVC` (ID=`DOC_ID`, Title=`TITLE`). Description: CRM notes and market news for risk signals and context.
+- Planning instructions
+  - "For client exposure, balances, revenues, or loan data, use the SnowBank_Portfolio_Analyst tool. For peer stock performance or market comparisons, use the Market_Peer_Analysis tool. For qualitative risks, news, or CRM notes, use Cortex Search. Synthesize results from multiple tools into a comprehensive 360° analysis."
+- Response instruction
+  - “Be concise. Provide a small metrics table (exposure, LTM fee revenue) and a single chart when time-series is requested. Include 2–4 sentence narrative. Cite document titles for any unstructured facts.”
+- Sample question
+  - “Briefing on ‘Helio Salmon AS’: total exposure, LTM fees, peer stock performance, and recent risk signals.”
+
+### 7.2 Risk_Analyst_Agent (Dynamic Portfolio Stress Testing)
+- Tools
+  - Cortex Analyst: `SNOWBANK_DEMO_SV` (Name: SNOWBANK_DEMO_ANALYST). Description: Portfolio segmentation and stress outcomes.
+  - Cortex Search: `INTERNAL_POLICY_SEARCH_SVC` (ID=`DOC_ID`, Title=`TITLE`). Description: Indexed credit policy content for mitigation options.
+- Planning instructions
+  - “For LTV shocks and cohort identification, use Cortex Analyst. Once a high-risk cohort is identified, query the policy search service to retrieve applicable mitigation clauses (e.g., payment holiday, restructuring). Synthesize the quantitative cohort with verbatim policy excerpts.”
+- Response instruction
+  - “Return a compact table with key fields (LOAN_ID, OUTSTANDING_BALANCE, POST_STRESS_LTV). Below, list quoted policy clauses with titles and sections. Keep total response brief.”
+- Sample question
+  - “Impact of 5% property decline and +75bps; loans breaching 85% LTV; relevant forbearance options.”
+
+### 7.3 ESG_Officer_Agent (Automated Green Bond Reporting)
+- Tools
+  - Cortex Analyst: `SNOWBANK_DEMO_SV` (Name: SNOWBANK_DEMO_ANALYST). Description: Green-tagged lending aggregation by category.
+  - Cortex Search: `REPORTING_AND_COMPLIANCE_SVC` (ID=`DOC_ID`, Title=`TITLE`). Description: Loan documents and third-party opinions for project descriptions and eligibility.
+- Planning instructions
+  - “Use Cortex Analyst to aggregate green lending amounts by category for the requested period. For top loans, query the reporting & compliance search service to extract project descriptions and environmental targets; also retrieve eligibility criteria. Provide citations.”
+- Response instruction
+  - “Start with a category totals table. Then list top projects with 1–2 sentence descriptions and extracted CO2 targets. Include a short eligibility confirmation with citations.”
+- Sample question
+  - “Generate 2024 Green Bond allocation by category; describe top 5 renewable projects; confirm eligibility.”
+
+### 7.4 Executive_Leadership_Agent (Cross‑Alliance Strategic Inquiry)
+- Tools
+  - Cortex Analyst: `SNOWBANK_DEMO_SV` (Name: SNOWBANK_DEMO_ANALYST). Description: Alliance KPIs: SMB growth and cost/income benchmarks.
+  - Cortex Search: `REPORTING_AND_COMPLIANCE_SVC` (ID=`DOC_ID`, Title=`TITLE`). Description: Annual report excerpts for strategic initiatives.
+- Planning instructions
+  - “Rank banks by SMB growth and compute alliance average C/I using Cortex Analyst. Then search annual reports for SMB initiatives and summarize specific actions with citations. Present a brief executive note.”
+- Response instruction
+  - “Provide a ranked list with SMB growth and C/I vs alliance avg, followed by bullet summaries of initiatives (1–2 bullets per bank) with citations. Keep it crisp.”
+- Sample question
+  - “Top 3 SMB growth banks in 2024; summarize their SMB initiatives; compare C/I vs alliance avg.”
+
+## 8. Enhanced scenario flows (4-5 step demonstrations)
+
+### 8.1 Holistic Client 360° (Norwegian Aquaculture Focus)
+**Step 1**: "Provide a 360-degree briefing on 'Helio Salmon AS': total exposure, LTM fees, peer stock performance vs top 3 aquaculture competitors, and scan last 6 months of CRM notes and news for operational risks like algae blooms, ISA, or new regulations."
+**Step 2**: "Based on identified risks, find other aquaculture clients in Helgeland region with similar exposure levels and their last credit review dates."
+**Step 3**: "Pull full regulatory update on new sea lice mitigation requirements - highlight clauses impacting Helio Salmon's operations and financing needs."
+**Step 4**: "Calculate potential financing opportunity if all our Helgeland aquaculture clients need equipment upgrades for new regulations."
+
+### 8.2 Dynamic Portfolio Stress Testing (Norwegian Property Market)
+**Step 1**: "Model 5% Helgeland property decline + 75bps rate increase on residential mortgage portfolio. Identify loans breaching 85% LTV. Cross-reference policy manual for forbearance options."
+**Step 2**: "For high-risk cohort, breakdown by origination year and average credit scores. Are 2021-2022 vintages disproportionately represented?"
+**Step 3**: "If we offer 6-month payment holidays to 50% of high-risk borrowers, what's the estimated impact on net interest income?"
+**Step 4**: "Compare this stress scenario impact across our three largest member banks - which has highest concentration risk?"
+
+### 8.3 Automated Green Bond Reporting (Norwegian Renewable Focus)
+**Step 1**: "Generate 2024 Green Bond allocation by category. For top 5 renewable energy loans, extract project descriptions and CO2 targets from loan documents. Confirm eligibility vs ISS ESG criteria."
+**Step 2**: "Find all green building projects mentioning LEED or BREEAM certification levels and their loan amounts."
+**Step 3**: "For clean transportation category, calculate average loan size for EV charging vs public transport projects. Any regional concentrations?"
+**Step 4**: "Summarize total environmental impact: aggregate expected CO2 reduction across all 2024 green loans."
+
+### 8.4 Cross-Alliance Strategic Inquiry (Alliance Dilemma Resolution)
+**Step 1**: "Rank all member banks by 2024 SMB lending growth. For top 3 performers, summarize their SMB initiatives from annual reports and compare C/I ratios vs alliance average."
+**Step 2**: "For top SMB performer, find specific digital platform or product launches mentioned in their Q4 2024 reporting."
+**Step 3**: "Based on top performers' strategies, provide 3 prioritized recommendations for alliance-wide SMB growth acceleration."
+**Step 4**: "Which initiatives could be rapidly deployed across other member banks with minimal integration complexity?"
+
+## 9. Alliance Dilemma narrative and demo script requirements
+
+### 9.1 Core value proposition messaging
+- **Opening**: "Nordic Banking Alliance faces the 'Alliance Dilemma' - maintaining member bank autonomy while gaining unified intelligence."
+- **Key differentiator**: "Snowflake Intelligence provides a federated query model, not forced data centralization."
+- **Demonstration proof points**:
+  - Queries seamlessly span multiple member banks without disrupting local systems
+  - Each bank's data remains autonomous while enabling cross-alliance insights
+  - Performance comparisons reveal best practices for rapid dissemination
+
+### 9.2 Demo script structure (per scenario)
+- **Context setting** (30 seconds): Persona introduction and business challenge
+- **Step-by-step queries** (3-4 minutes): Execute 4-5 questions with brief explanations
+- **Value articulation** (30 seconds): Connect capabilities to strategic business outcomes
+- **Transition** (15 seconds): Setup for next scenario or closing summary
+
+### 9.3 Required talking points per scenario
+- **Client 360°**: "Traditional preparation took hours across multiple systems. Now: 2 minutes, complete intelligence."
+- **Stress Testing**: "From static reports to dynamic, policy-aware risk modeling in real time."
+- **Green Bond**: "Weeks of manual ESG reporting automated into minutes with full audit trail."
+- **Cross-Alliance**: "The impossible question: real-time strategy comparison across the entire federation."
+
+### 9.4 Demo flow documentation requirements
+- Complete script with transitions and timing
+- Fallback talking points if queries take longer than expected
+- Key metrics to highlight in each response
+- Closing summary connecting all scenarios to Alliance transformation
+
+## 10. Acceptance criteria
+- Data volumes and history reflect configuration.
+- Each agent successfully completes all 4-5 step scenario flows with correct tools and relevant citations.
+- Search services return highly relevant passages for Norwegian industry-specific queries.
+- Semantic model metrics map correctly to underlying tables; synonyms produce expected SQL.
+- Reset fully regenerates demo data without manual cleanup.
+- Complete demo script documentation enables 15-20 minute compelling presentation.
+
+## 10. References
+- Snowpark Session via connections.toml — Creating a Session (connections.toml): https://docs.snowflake.com/en/developer-guide/snowpark/python/creating-session#connect-by-using-the-connections-toml-file
+- Snowflake Intelligence — Create an agent and add tools: https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-intelligence#create-an-agent
+- Cortex AISQL — Availability and models: https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql#availability
