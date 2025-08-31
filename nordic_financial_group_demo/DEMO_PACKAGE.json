@@ -1,0 +1,235 @@
+{
+  "metadata": {
+    "title": "Snowdrift Financials Demo Package",
+    "description": "Complete demo scripts and validation queries for Insurance agents",
+    "generated_for_connection": "sfseeurope-mstellwall-aws-us-west3",
+    "total_claims": 5,
+    "total_municipalities": 15,
+    "total_companies": 5
+  },
+  "infrastructure_summary": {
+    "semantic_view": "INSURANCE_ANALYTICS.NORWEGIAN_INSURANCE_SEMANTIC_VIEW",
+    "search_services": [
+      "CLAIMS_SEARCH_SERVICE",
+      "UNDERWRITING_SEARCH_SERVICE"
+    ],
+    "document_counts": {
+      "claims_documents": 150,
+      "underwriting_documents": 120
+    }
+  },
+  "sample_data": [
+    {
+      "claim_id": "CLM-024723",
+      "policy_id": "POL-008460",
+      "description": "Flooding from heavy rain",
+      "amount": 33875455,
+      "status": "CLOSED",
+      "municipality": "Troms\u00f8",
+      "policy_type": "COMMERCIAL",
+      "flood_risk": 1
+    },
+    {
+      "claim_id": "CLM-024723",
+      "policy_id": "POL-008460",
+      "description": "Flooding from heavy rain",
+      "amount": 33875455,
+      "status": "CLOSED",
+      "municipality": "Troms\u00f8",
+      "policy_type": "COMMERCIAL",
+      "flood_risk": 2
+    },
+    {
+      "claim_id": "CLM-024723",
+      "policy_id": "POL-008460",
+      "description": "Flooding from heavy rain",
+      "amount": 33875455,
+      "status": "CLOSED",
+      "municipality": "Troms\u00f8",
+      "policy_type": "COMMERCIAL",
+      "flood_risk": 6
+    }
+  ],
+  "demo_scripts": {
+    "claims_intake": {
+      "scenario": "Claims Intake Assistant Demo",
+      "duration": "10-15 minutes",
+      "setup": "New flood damage claim for commercial property in Troms\u00f8",
+      "sample_claim_id": "CLM-024723",
+      "steps": [
+        {
+          "step": 1,
+          "title": "Claim Overview",
+          "duration": "3 minutes",
+          "prompt": "I need to review claim CLM-024723 that just came in. Can you give me a quick summary of what happened?",
+          "expected_response": [
+            "3-5 sentence incident summary",
+            "Key dates and location",
+            "Damage estimate around 33,875,455 NOK",
+            "Citation to claims documents"
+          ]
+        },
+        {
+          "step": 2,
+          "title": "Medical Details Extraction",
+          "duration": "4 minutes",
+          "prompt": "Extract all medical information from claim CLM-024723 and present it in a structured table. Include injuries, treatments, and prognosis.",
+          "expected_response": [
+            "Structured table with medical details",
+            "Injury severity assessment",
+            "Treatment recommendations",
+            "Recovery timeline",
+            "Citations to medical reports"
+          ]
+        },
+        {
+          "step": 3,
+          "title": "Inconsistency Detection",
+          "duration": "5 minutes",
+          "prompt": "Review all documents for claim CLM-024723 and identify any inconsistencies in the timeline, witness statements, or reported facts.",
+          "expected_response": [
+            "List of identified discrepancies",
+            "Timeline analysis",
+            "Conflicting statements highlighted",
+            "Recommendations for follow-up investigation",
+            "Document citations for each finding"
+          ]
+        },
+        {
+          "step": 4,
+          "title": "Investigation Recommendations",
+          "duration": "3 minutes",
+          "prompt": "Based on your analysis of claim CLM-024723, what additional investigation steps would you recommend?",
+          "expected_response": [
+            "Prioritized investigation tasks",
+            "Required documentation",
+            "Expert consultations needed",
+            "Estimated complexity/timeline",
+            "Risk assessment"
+          ]
+        }
+      ]
+    },
+    "underwriting": {
+      "scenario": "Underwriting Co-Pilot Demo",
+      "duration": "10-15 minutes",
+      "setup": "New commercial property application for Berg Handel Solutions AS in Kristiansand",
+      "sample_municipality": "Kristiansand",
+      "sample_company": "Berg Handel Solutions AS",
+      "steps": [
+        {
+          "step": 1,
+          "title": "Location Risk Analysis",
+          "duration": "4 minutes",
+          "prompt": "I have a new commercial property application in Kristiansand. What can you tell me about the flood risk and historical claims in this area?",
+          "expected_response": [
+            "Flood risk score interpretation (10/10)",
+            "Historical claims patterns",
+            "Geographic risk factors",
+            "Comparison to other municipalities",
+            "Citation to risk assessments"
+          ]
+        },
+        {
+          "step": 2,
+          "title": "Prior History Research",
+          "duration": "4 minutes",
+          "prompt": "Research the claims history for similar commercial properties in Kristiansand. Are there any patterns or concerns I should know about?",
+          "expected_response": [
+            "Claims frequency analysis",
+            "Common loss types",
+            "Seasonal patterns",
+            "Property type risk profiles",
+            "Supporting data tables"
+          ]
+        },
+        {
+          "step": 3,
+          "title": "Market Intelligence",
+          "duration": "4 minutes",
+          "prompt": "Find any recent market analysis or environmental reports that might affect underwriting decisions for Kristiansand.",
+          "expected_response": [
+            "Market condition summaries",
+            "Environmental risk updates",
+            "Regulatory changes",
+            "Climate trend analysis",
+            "Citations to research documents"
+          ]
+        },
+        {
+          "step": 4,
+          "title": "Underwriting Recommendation",
+          "duration": "3 minutes",
+          "prompt": "Based on all available information, provide your underwriting recommendation for Berg Handel Solutions AS in Kristiansand, including pricing, coverage considerations, and any special conditions.",
+          "expected_response": [
+            "Risk rating (High/Medium/Low)",
+            "Recommended premium adjustment",
+            "Coverage limitations",
+            "Special conditions/endorsements",
+            "Supporting rationale with citations"
+          ]
+        }
+      ]
+    }
+  },
+  "validation_queries": {
+    "claims_intake_quick_tests": [
+      "Summarize claim CLM-024723 in 3 sentences",
+      "What is the status and claim amount for CLM-024723?",
+      "Show me the top 5 highest value claims from the last month",
+      "Find all claims in Troms\u00f8 and their total value",
+      "List claims that might need medical review based on their descriptions"
+    ],
+    "underwriting_quick_tests": [
+      "What is the flood risk score for Kristiansand?",
+      "Compare claims history between Kristiansand and Oslo",
+      "Show me municipalities with flood risk scores above 7",
+      "How many policies do we have in Kristiansand?",
+      "Find areas with the highest average claim amounts"
+    ],
+    "semantic_view_tests": [
+      "What is our total premium income?",
+      "Show me the loss ratio by municipality",
+      "Which policy types have the highest claim frequency?",
+      "What are the top 5 municipalities by policy count?",
+      "Show me average claim amounts by flood risk category"
+    ]
+  },
+  "recommended_municipalities": [
+    {
+      "municipality": "Kristiansand",
+      "flood_risk_score": 10,
+      "policy_count": 2038,
+      "claim_count": 3532,
+      "avg_claim_amount": "2982149.747735"
+    },
+    {
+      "municipality": "Troms\u00f8",
+      "flood_risk_score": 8,
+      "policy_count": 2715,
+      "claim_count": 5138,
+      "avg_claim_amount": "3287287.368431"
+    },
+    {
+      "municipality": "Stavanger",
+      "flood_risk_score": 8,
+      "policy_count": 1799,
+      "claim_count": 2883,
+      "avg_claim_amount": "2936690.753035"
+    },
+    {
+      "municipality": "Fredrikstad",
+      "flood_risk_score": 8,
+      "policy_count": 1660,
+      "claim_count": 2347,
+      "avg_claim_amount": "2839669.292288"
+    },
+    {
+      "municipality": "Troms\u00f8",
+      "flood_risk_score": 7,
+      "policy_count": 2715,
+      "claim_count": 5138,
+      "avg_claim_amount": "3287287.368431"
+    }
+  ]
+}

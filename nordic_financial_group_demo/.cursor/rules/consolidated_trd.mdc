@@ -1,0 +1,337 @@
+---
+alwaysApply: true
+---
+# Snowdrift Financials - Consolidated Technical Requirements Document (TRD)
+
+## Common Technical Standards (All Phases)
+
+### Environment & Connectivity
+- **Connection Management**: Use `~/.snowflake/connections.toml` per official Snowflake documentation
+- **Session Creation**: `Session.builder.config("connection_name", connection_name).create()`
+- **Default Connection**: "sfseeurope-mstellwall-aws-us-west3" (configured in config.yaml, overridable via `--connection` CLI arg)
+- **Single User**: Demo role with object ownership
+- **Reference**: https://docs.snowflake.com/en/developer-guide/python-connector/python-connector-connect#label-python-connection-toml
+
+### Database Architecture
+- **Database**: SNOWDRIFT_FINANCIALS (shared across all phases)
+- **Schema Pattern**: `{DIVISION}` (INSURANCE, BANK, ASSET_MGMT) + `{DIVISION}_ANALYTICS`
+- **Control Schema**: CONTROL (shared configuration and prompt management)
+- **Object Creation Pattern**: Use `CREATE DATABASE IF NOT EXISTS` for databases (safety) and `CREATE OR REPLACE` for all other objects (schemas, tables, views, search services) to enable easy re-running and updates
+
+### Configuration Management
+- **Primary Configuration**: Use `config.yaml` for centralized configuration
+- **Global settings**: Database, connection, seeds
+- **Division settings**: Data volumes, Norwegian municipalities, risk distributions (per INSURANCE, BANK, ASSET_MGMT)
+- **Content generation**: Models, parameters, prompts
+- **Agent configuration**: Response styles, tool bindings
+- **Runtime Overrides**: Key settings can be overridden via CONTROL.CONFIG table after setup
+
+### Data Generation Standards
+- **ALWAYS use Session.write_pandas()** with exact parameters:
+  - `quote_identifiers=False`
+  - `auto_create_table=True`
+  - `overwrite=True`
+- **ALWAYS return Snowpark DataFrames** from write_pandas for validation and row count verification
+- **NO test modes**: Always connect to Snowflake and generate real data
+- **Progress logging**: For long-running data generation operations
+- **Deterministic generation**: Global and module seeds with recorded lineage
+
+### Unstructured Content Generation
+- **Framework**: CONTROL.PROMPTS and CONTROL.PROMPT_RUNS
+- **Models**: Default claude-4-sonnet; fallback llama3.1-8b (configurable via config.yaml)
+- **Storage**: Markdown content directly in Snowflake tables (CONTENT_MD columns)
+- **Lineage**: Full tracking via PROMPT_RUNS (prompt_id, model, seed, output ids)
+- **Workflow**: Generate prompts → Store in PROMPTS table → Create Snowpark DataFrame → Use with_column(Complete()) → Save with save_as_table()
+
+### Cortex Search Services
+- **Pattern**: One service per scenario over base table with CONTENT_MD
+- **Attributes**: Always include ID, TITLE + scenario-specific metadata
+- **Embedding**: Use default embedding model
+- **Performance**: TARGET_LAG tuned for demo responsiveness (e.g., '1 minute')
+- **Testing**: Use SEARCH_PREVIEW function if available, otherwise verify document counts
+- **Creation**: Use CREATE CORTEX SEARCH SERVICE syntax with proper ON, ATTRIBUTES, TARGET_LAG, WAREHOUSE
+
+### Semantic Views (Cortex Analyst)
+- **Location**: {DIVISION}_ANALYTICS schema
+- **Syntax**: Proper CREATE SEMANTIC VIEW with TABLES, RELATIONSHIPS, FACTS, DIMENSIONS, METRICS
+- **Components**: TABLES (with PRIMARY KEY, SYNONYMS, COMMENT), RELATIONSHIPS, FACTS, DIMENSIONS, METRICS
+- **Best Practices**: Always include COMMENT and WITH SYNONYMS for all supported elements
+- **Validation**: Use SEMANTIC_VIEW() query syntax for testing
+- **Query Format**: `SELECT * FROM SEMANTIC_VIEW(view_name METRICS table.metric_name)`
+- **Integration**: Cross-division joins where applicable
+
+### Agent Configuration (Snowsight)
+- **Orchestration**: Claude 4, English language
+- **Tool Binding**: Cortex Analyst + Cortex Search per scenario needs
+- **Instructions Structure**: Split into Response Instructions and Planning Instructions
+- **Response Instructions**: Define tone, style, capabilities, citation requirements, output format
+- **Planning Instructions**: Specify tool selection strategy, workflow guidance, search strategies, escalation criteria
+- **Best Practice**: Separate concerns - Response for "how to answer", Planning for "which tools to use when"
+- **Tool Workflow Design**: Use explicit "STEP 1: ALWAYS use [Tool Name]", "STEP 2: ALWAYS use [Tool Name]" sequencing
+- **Tool Descriptions**: Mark tools as "Primary" and "Secondary" with clear usage priorities and specific use cases in descriptions (e.g., "Primary tool for structured claim data. Use FIRST for...")
+- **Mandatory Workflows**: Use "MANDATORY", "ALWAYS", "NEVER SKIP" language to enforce critical tool usage patterns
+
+### Implementation Best Practices
+- **NEVER use test modes** or `--test` flags; always connect to Snowflake and generate real data
+- **ALWAYS use session.write_pandas()** with exact parameters listed above
+- **ALWAYS return and validate** using Snowpark DataFrames for actual row counts
+- **Use Session.builder.config()** for session creation following official documentation
+- **Use step-based CLI** (`--step setup|data|semantic-v2|documents-v2|search|all`) not milestone parameters
+- **Use simple file names** (setup.py, generate_data.py) without phase prefixes
+- **Include progress logging** for long-running operations
+- **Validate data** by querying actual row counts from Snowflake tables
+- **Handle write_pandas return values** properly - may return different tuple lengths depending on Snowflake version
+- **Use PRIMARY KEY correctly** in SEMANTIC VIEW TABLES - ensure it matches actual table structure
+- **Document generation workflow** - Generate prompts first, store in PROMPTS table, then use with_column(Complete())
+- **Model configuration** - Support primary and fallback models via config.yaml (claude-4-sonnet → llama3.1-8b)
+- **Search service testing** - Use SEARCH_PREVIEW if available, fallback to document count verification
+- **SEMANTIC VIEW syntax** - Use proper TABLES, RELATIONSHIPS, FACTS, DIMENSIONS, METRICS structure
+- **Agent instructions** - Always split into Response Instructions (how to respond) and Planning Instructions (tool selection)
+- **Tool workflow enforcement** - Use explicit step-by-step workflows in Planning Instructions with specific tool names and mandatory sequencing
+
+### Data Access Validation & Troubleshooting
+- **CRITICAL**: Always validate data ACCESS, not just data existence - agents fail when they can't query data properly
+- **Semantic View Fallbacks**: Create regular views as fallbacks since semantic views may have environment compatibility issues
+- **Connection Name Validation**: Use correct connection names from connections.toml in all validation steps
+- **End-to-End Testing**: Test both structured and unstructured data access together before declaring success
+- **Golden Data Verification**: Validate that golden records (like CLM-014741) are accessible through agent query patterns
+- **Agent Error Diagnosis**: "structured data system doesn't have detailed claim information" = data access issue, not missing data
+- **Agent Tool Usage Diagnosis**: If agent only uses one tool (e.g., only search, missing analyst), check Planning Instructions for explicit workflow sequencing
+- **View Creation Pattern**: `CREATE OR REPLACE VIEW` for regular views when semantic views fail with "Unsupported feature" errors
+- **Demo Claim Verification**: Always test specific demo claims (CLM-014741) can be queried before agent configuration
+
+### Critical Data Consistency Requirements
+- **PROMPTS Table Schema**: Ensure table structure in setup.py exactly matches what document generation code expects (all required fields, correct data types, proper column order)
+- **Golden Data Generation**: Always generate specific "golden" records with known IDs that support all test queries and demo scenarios
+- **Structured-Unstructured Linking**: Ensure golden claims have corresponding golden documents generated consistently every time
+- **Agent Tool Naming**: Use underscores (not spaces) in tool names; provide Name, Description, ID Column, Title Column for each tool
+- **Test Query Support**: Every test query in AGENT_SETUP_GUIDE.md must have supporting data generated automatically
+- **Schema Field Matching**: When creating DataFrames for insertion, ensure all dictionary keys match table column names exactly (including SEED, CREATED_AT, METADATA fields)
+- **Golden Records Priority**: Generate golden records FIRST, then fill remaining quota with random data to avoid ID conflicts
+- **Demo Claim Timing**: Golden claims referenced in demo scripts as "new" or "just came in" must use current dates (today for reported_date, yesterday for loss_date) to match demo narrative
+- **Demo Claim Context**: Golden claims must have appropriate context for their demo scenarios - medical context for medical extraction demos, fraud indicators for fraud detection demos, etc.
+- **CLM-014741 Requirements**: Main demo claim must be (1) motor vehicle accident with multiple injuries, (2) reported today with OPEN status and 0 paid amount, (3) have corresponding medical reports for extraction demo
+
+### Agent Planning Instructions Best Practices
+- **Explicit Tool Sequencing**: Use "STEP 1: ALWAYS use [Tool Name]" and "STEP 2: ALWAYS use [Tool Name]" format in Planning Instructions
+- **Tool-Specific Workflows**: Define mandatory workflows for specific request types (e.g., "FOR CLAIM REVIEW/SUMMARY REQUESTS")
+- **Failure Prevention Language**: Include "CRITICAL: Never skip [Tool Name] step" warnings for essential tools
+- **Data Source Integration**: Require agents to use both structured (Cortex Analyst) and unstructured (Cortex Search) data sources for comprehensive responses
+- **Tool Purpose Clarity**: Specify what data each tool provides (structured: dates/amounts/status, unstructured: narratives/details)
+- **Workflow Enforcement**: Use imperative language like "MANDATORY", "ALWAYS", "NEVER SKIP" to ensure critical tool usage patterns
+- **Request Type Mapping**: Map specific user request patterns to required tool workflows to prevent tool skipping
+- **Response Format Requirements**: Specify required output format combining both structured and unstructured data sources
+- **Testing Pattern**: Use exact demo queries in test procedures to validate proper tool sequencing
+- **Success Validation**: Agent should use both tools in correct sequence for comprehensive responses with proper citations from both sources
+
+### Execution Patterns
+- **CLI Structure**: `--step setup|data|semantic-v2|documents-v2|search|all|all-v1` with optional `--connection`
+- **File Naming**: Simple descriptive names without phase prefixes (v2 versions for improved implementations)
+- **Data Validation**: Always query actual Snowflake row counts for verification
+- **Error Handling**: Comprehensive logging with clear failure points
+- **Version Strategy**: v2 implementations use proper SEMANTIC VIEW syntax and improved Complete workflow
+- **Recommended Flow**: Use 'all' step for complete v2 workflow (setup → data → semantic-v2 → documents-v2 → search)
+
+### SEMANTIC VIEW Syntax Reference
+- **Correct Structure**:
+```sql
+CREATE SEMANTIC VIEW view_name
+  TABLES (
+    table_alias AS schema.table_name
+      PRIMARY KEY (column_name)
+      WITH SYNONYMS ('synonym1', 'synonym2')
+      COMMENT = 'Description of table'
+  )
+  RELATIONSHIPS (
+    relationship_name AS
+      table1 (column) REFERENCES table2
+  )
+  FACTS (
+    table.fact_name AS table.column_name
+      WITH SYNONYMS = ('synonym1', 'synonym2')
+      COMMENT = 'Description of fact'
+  )
+  DIMENSIONS (
+    table.dimension_name AS expression
+      WITH SYNONYMS = ('synonym1', 'synonym2')
+      COMMENT = 'Description of dimension'
+  )
+  METRICS (
+    table.metric_name AS aggregate_expression
+      WITH SYNONYMS = ('synonym1', 'synonym2')
+      COMMENT = 'Description of metric'
+  )
+  COMMENT = 'Overall description of semantic view'
+```
+- **Query Syntax**: `SELECT * FROM SEMANTIC_VIEW(view_name METRICS table.metric_name)`
+- **Key Requirements**: PRIMARY KEY must match actual table structure, always use COMMENT and WITH SYNONYMS
+
+---
+
+## Phase 1: Insurance Technical Requirements
+
+### Database Extensions
+- **New Schemas**: INSURANCE, INSURANCE_ANALYTICS
+- **Core Tables**: POLICIES, CLAIMS, GEO_RISK_SCORES, BRREG_SNAPSHOT
+- **Document Tables**: CLAIMS_DOCUMENTS, UNDERWRITING_DOCUMENTS
+
+### Table Structures
+```sql
+-- INSURANCE.POLICIES
+POLICY_ID (PK), CUSTOMER_ID, POLICY_TYPE, PREMIUM, COVERAGE_AMOUNT, 
+EFFECTIVE_DATE, STATUS, ADDRESS_LINE1, CITY, MUNICIPALITY, POSTAL_CODE
+
+-- INSURANCE.CLAIMS  
+CLAIM_ID (PK), POLICY_ID (FK), LOSS_DATE, REPORTED_DATE, DESCRIPTION,
+STATUS, CLAIM_AMOUNT, PAID_AMOUNT, ADDRESS_LINE1, CITY, MUNICIPALITY
+
+-- INSURANCE.GEO_RISK_SCORES
+ADDRESS_KEY (PK), MUNICIPALITY, POSTAL_CODE, FLOOD_RISK_SCORE (1-10), RISK_FACTORS
+
+-- Document tables with CONTENT_MD, DOC_TYPE, metadata columns
+```
+
+### Data Generation
+- **Norwegian Focus**: Realistic municipalities, postal codes, business names
+- **Flood Risk Modeling**: Coastal cities higher risk, correlation with claims
+- **Volumes**: ~20k policies, ~30k claims, ~1k locations, ~5k companies
+- **Documents**: ~150 claims docs, ~120 underwriting docs
+- **Golden Claims**: Generate with current dates and appropriate context for demo scenarios (see Critical Data Consistency Requirements above)
+
+### Services & Views
+- **Search Services**: CLAIMS_SEARCH_SERVICE and UNDERWRITING_SEARCH_SERVICE with proper attributes
+- **Semantic View**: INSURANCE_ANALYTICS.NORWEGIAN_INSURANCE_SEMANTIC_VIEW with proper SEMANTIC VIEW syntax
+- **Document Tables**: CLAIMS_DOCUMENTS and UNDERWRITING_DOCUMENTS with CONTENT_MD columns
+- **Agents**: Claims Intake Assistant, Underwriting Co-Pilot with split Response/Planning instructions
+
+---
+
+## Phase 2: Banking Technical Requirements
+
+### Database Extensions  
+- **New Schemas**: BANK, BANK_ANALYTICS
+- **Core Tables**: CUSTOMERS, ACCOUNTS, TRANSACTIONS, LOANS, BRREG_CORPORATE
+- **Document Tables**: Economic reports, compliance documents
+
+### Table Structures
+```sql
+-- BANK.CUSTOMERS
+CUSTOMER_ID (PK), FIRST_NAME, LAST_NAME, DOB, NATIONAL_ID, ADDRESS_LINE1,
+CITY, MUNICIPALITY, POSTAL_CODE, PHONE, EMAIL, CUSTOMER_SINCE, STATUS
+
+-- BANK.ACCOUNTS
+ACCOUNT_ID (PK), CUSTOMER_ID (FK), ACCOUNT_TYPE, BALANCE, INTEREST_RATE, OPENED_DATE
+
+-- BANK.TRANSACTIONS
+TRANSACTION_ID (PK), ACCOUNT_ID (FK), TRANSACTION_DATE, AMOUNT, 
+MERCHANT_NAME, MERCHANT_CATEGORY, DESCRIPTION
+
+-- Cross-reference tables linking to INSURANCE.POLICIES where applicable
+```
+
+### Data Generation
+- **Transaction Patterns**: Realistic Norwegian spending (groceries, fuel, utilities)
+- **Life Events**: Daycare, home improvement, medical expenses in transaction data
+- **Cross-References**: 20-30% customer overlap with Insurance policies
+- **Volumes**: ~25k customers, ~100k accounts, ~50M transactions, ~15k loans
+- **Documents**: ~100 economic reports, ~75 compliance docs
+
+### Integration Requirements
+- **Customer Cross-References**: Link to existing Insurance policies
+- **Shared Geography**: Same Norwegian municipalities and postal codes
+- **Consistent Naming**: Same fictional business ecosystem
+
+### Services & Views
+- **Search Services**: Economic data and compliance document services
+- **Semantic View**: BANK_ANALYTICS.CUSTOMER_360_VIEW with cross-division integration
+- **Agents**: Client Insights 360, Mortgage Risk Advisor, Compliance Doc-Checker
+
+---
+
+## Phase 3: Asset Management Technical Requirements
+
+### Database Extensions
+- **New Schemas**: ASSET_MGMT, ASSET_MGMT_ANALYTICS  
+- **Core Tables**: SECURITIES_MASTER, DAILY_PRICES, FUNDAMENTALS, ESG_SCORES, PORTFOLIOS, PORTFOLIO_HOLDINGS
+- **Document Tables**: Research, ESG, due diligence documents
+
+### Table Structures
+```sql
+-- ASSET_MGMT.SECURITIES_MASTER
+SECURITY_ID (PK), TICKER, COMPANY_NAME, EXCHANGE, CURRENCY, GICS_SECTOR,
+RBICS_L6_CODE, COUNTRY, MARKET_CAP, LISTING_DATE
+
+-- ASSET_MGMT.DAILY_PRICES  
+SECURITY_ID (FK), PRICE_DATE (PK), OPEN_PRICE, HIGH_PRICE, LOW_PRICE,
+CLOSE_PRICE, VOLUME, ADJUSTED_CLOSE
+
+-- ASSET_MGMT.ESG_SCORES
+SECURITY_ID (FK), PROVIDER, SCORE_DATE (PK), OVERALL_SCORE, 
+ENV_PILLAR_SCORE, SOC_PILLAR_SCORE, GOV_PILLAR_SCORE
+
+-- Portfolio and holdings tables with performance tracking
+```
+
+### Data Generation
+- **Securities Universe**: Global focus with Nordic/European concentration (~60%)
+- **Market Data**: 5-year daily prices with realistic volatility patterns
+- **ESG Integration**: Sector-appropriate scores with controversy scenarios
+- **Cross-Division Links**: Investment products for high-net-worth Banking customers
+- **Volumes**: ~5k securities, ~10 portfolios, 5-year history, ~50k holdings
+- **Documents**: ~200 research docs, ~150 ESG docs, ~100 due diligence docs
+
+### Advanced Analytics
+- **Performance Attribution**: Factor analysis and alpha decomposition
+- **Risk Modeling**: VaR calculations and scenario analysis
+- **ESG Integration**: Impact modeling and sustainability trend analysis
+- **Portfolio Optimization**: Modern portfolio theory implementation
+
+### Services & Views
+- **Search Services**: Research, ESG, and due diligence document services
+- **Semantic View**: ASSET_MGMT_ANALYTICS.INVESTMENT_VIEW with sophisticated investment terminology
+- **Agents**: Nordic Thematic Analyst, ESG Guardian, Due Diligence Co-Pilot
+
+---
+
+## Performance & Optimization
+
+### Data Partitioning
+- **Time Series**: Partition by year for price and transaction data
+- **Geographic**: Optimize for Norwegian municipality filtering
+- **Sector/Industry**: Support thematic and sector-based queries
+
+### Indexing Strategy
+- **Customer Data**: Optimized for 360-degree lookups
+- **Securities Data**: Sector, geography, market cap filtering
+- **Document Search**: Full-text indexing on CONTENT_MD columns
+
+### Search Service Tuning
+- **TARGET_LAG**: Optimized for demo responsiveness
+- **Warehouse Sizing**: Appropriate for document corpus sizes
+- **Embedding Strategy**: Default models with custom attributes
+
+### Agent Performance
+- **Pre-warming**: Services and agents ready before demos
+- **Response Optimization**: Tuned for 10-15 minute scenarios
+- **Error Handling**: Graceful degradation and clear error messages
+
+---
+
+## Cross-Phase Dependencies
+
+### Sequential Requirements
+- **Phase 1**: Foundation for all subsequent phases
+- **Phase 2**: Requires Phase 1 Insurance data for customer cross-references
+- **Phase 3**: Requires Phase 2 Banking data for high-net-worth customer identification
+
+### Shared Components
+- **CONTROL Schema**: Configuration and prompt management across all phases
+- **Connection Management**: Consistent connection handling
+- **Data Validation**: Same patterns for row count verification
+- **Error Handling**: Unified logging and error reporting
+
+### Integration Points
+- **Customer Journey**: Data flows from Banking → Insurance → Asset Management
+- **Risk Correlation**: Shared risk assessment across divisions
+- **ESG Consistency**: Unified sustainability policies and scoring
+- **Geographic Data**: Consistent Norwegian focus across all phases

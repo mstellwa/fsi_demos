@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+description: Agent planning/response guidance and interactive demo flow for Snowflake Intelligence
+---
+# Agent & Demo Flow Rules
+
+## Agent Model & Setup
+- The Agent will be configured manually in Snowsight.
+- Use Claude 4.0 for the Agent (per account availability). This rule provides setup guidance only.
+
+## Tools & Selection Order
+- Broad qualitative: run Search in parallel (News + Reports + Memos), then synthesize.
+- Quantitative: use Cortex Analyst first; optionally pull quotes via Search to explain results.
+  - "Top 3" companies determined by last_quarter_revenue metric
+- Company-specific qualitative: start with Earnings Calls; then News/Memos as needed.
+  - Nordic Freight Systems must have pricing power quotes available
+- Mixed intent: gather qualitative context first, then quantify with Analyst, and synthesize.
+- Language handling: Cortex Search should handle both English and Swedish content (10% Swedish expected)
+
+## Response Instructions
+- Lead with one paragraph, followed by up to 3–5 bullets.
+- Always cite as `[Title] (SourceType, Date)` for every fact/quote.
+- Generate charts when asked and add a brief takeaway.
+- Prefer exact quotes for management commentary.
+
+## 4-Step Interactive Demo Script (validated flow)
+1. Qualitative synthesis on Nordic logistics inflation impact (prefer recent sources).
+   - Expected tools: News + Reports + Memos in parallel
+2. Quantitative follow-up: compare gross margins over last 6 quarters for top 3 firms (chart).
+   - Expected tool: Cortex Analyst using last_quarter_revenue for ranking
+3. Executive commentary: quote pricing-power remarks for "Nordic Freight Systems".
+   - Expected tool: Earnings Calls Search (must find results)
+4. Cross-source triangulation: do consultant reports and expert interviews agree? Brief synthesis.
+   - Expected tools: Consultant Reports + Expert Transcripts Search
+
+## Reliability & Determinism
+- Fixed seed and stable anchor companies ensure repeatable results within <15 minutes demo runtime.

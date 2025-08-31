@@ -1,0 +1,161 @@
+---
+alwaysApply: true
+---
+# Snowdrift Financials - Consolidated Functional Requirements Document (FRD)
+
+## Common Requirements (All Phases)
+
+### Core Technical Standards
+- **Orchestration model**: Claude 4 (per-agent configuration in Snowsight), English only
+- **Unstructured generation**: Use snowflake.cortex.complete default model claude-4-sonnet with fallback llama3.1-8b
+- **Content workflow**: Generate prompts → Store in PROMPTS table → Use with_column(complete()) → Save with save_as_table()
+- **Content storage**: Markdown authored and stored directly in Snowflake tables (no files)
+- **Data realism**: Strictly synthetic, realistic Norwegian focus with appropriate regional characteristics
+- **Determinism**: Global and per-module seeds; seeds recorded with each run for reproducibility
+- **Configurability**: Volumes, history windows, corpora sizes, model parameters configurable via central config
+- **Performance**: Scenarios must complete comfortably within 10–15 minute demo windows
+- **Branding**: Use fictional "Snowdrift Financials" only; no real customer names or marks
+
+### Agent Behavior Standards
+- **Instructions Structure**: Split agent instructions into Response Instructions and Planning Instructions
+- **Response Instructions**: Define tone, style, capabilities, citation format, output structure, domain expertise
+- **Planning Instructions**: Specify tool selection strategy, workflow guidance, search strategies, escalation criteria
+- **Response style**: Professional domain-specific tone with clear rationale and proper citations
+- **Planning approach**: Prefer Cortex Analyst for structured data; Cortex Search for unstructured evidence
+- **Citation requirements**: At least one citation when unstructured data is used; show TITLE + section
+- **Explanation footer**: "How I answered" explanations for transparency
+- **Visual outputs**: Tables/charts where helpful; keep within demo timing constraints
+- **Tool Configuration**: Cortex Analyst tools named with underscores (e.g., "Norwegian_Insurance_Analytics"), Cortex Search tools describe data repository (e.g., "Claims_Document_Repository")
+- **Test Query Validation**: All test queries in agent setup guides must have corresponding data generated automatically; no test query should fail due to missing data
+- **Golden Data Consistency**: Test scenarios must use pre-defined "golden" record IDs that are generated consistently across structured and unstructured data
+
+### Cortex Integration Patterns
+- **Search Services**: Each scenario has dedicated service with ID/TITLE attributes over CONTENT_MD
+- **Semantic Views**: Proper SEMANTIC VIEW syntax with TABLES, RELATIONSHIPS, FACTS, DIMENSIONS, METRICS
+- **View Components**: All elements include COMMENT and WITH SYNONYMS for natural language accessibility
+- **Agent Tools**: Combination of Cortex Analyst + Cortex Search per scenario requirements
+- **Query Pattern**: Use SEMANTIC_VIEW() function syntax for Cortex Analyst queries
+
+### Cross-Division Integration
+- **Customer journey**: Progression from Banking → Insurance → Asset Management
+- **Data consistency**: Shared Norwegian geography, postal codes, company ecosystem
+- **Risk correlation**: Investment risks considered alongside insurance and banking exposures
+- **ESG integration**: Sustainability considerations across all divisions
+
+---
+
+## Phase 1: Insurance (Property P&C; Commercial Property)
+
+### Purpose & Scope
+Deliver demo-ready, investigator-style Snowflake Intelligence experience for Insurance division, focusing on Property P&C claims and Commercial Property underwriting.
+
+### Personas & Scenarios
+- **Claims Intake Assistant** (Property P&C)
+  - Persona: Senior Claims Adjuster
+  - Goal: Rapidly understand new claims, extract medical/incident details, detect inconsistencies
+- **Underwriting Co-Pilot** (Commercial Property)
+  - Persona: Commercial P&C Underwriter
+  - Goal: Enrich applications with internal history, flood risk factors, and adverse media
+
+### Data Requirements
+- **Structured data**: POLICIES, CLAIMS, GEO_RISK_SCORES, BRREG_SNAPSHOT
+- **Unstructured data**: Claims corpus (~150 docs), Underwriting corpus (~120 docs)
+- **Featured risk**: Flood peril with geographic correlation (1-10 scale)
+
+### Acceptance Criteria
+- **Claims Assistant**: Incident summary (3-5 sentences), medical table, inconsistency detection
+- **Underwriting Co-Pilot**: Prior history, flood risk summary, adverse media, recommendations
+
+### Volume Defaults
+- Structured: ~20k policies, ~30k claims, ~1k geo locations, ~5k companies
+- Unstructured: ~150 claims docs, ~120 underwriting docs
+
+---
+
+## Phase 2: Banking (Retail & Corporate Banking)
+
+### Purpose & Scope
+Deliver demo-ready Snowflake Intelligence experiences for Banking division, focusing on customer relationship management, credit risk analysis, and compliance automation. Builds on Phase 1 Insurance foundation.
+
+### Personas & Scenarios
+- **Client Insights 360** (Relationship Management)
+  - Persona: Retail Banking Relationship Manager
+  - Goal: Identify cross-sell opportunities through holistic customer analysis
+- **Mortgage Risk Advisor** (Credit Risk Analysis)
+  - Persona: Credit Risk Analyst
+  - Goal: Enhance mortgage underwriting with external economic/housing market data
+- **Compliance Doc-Checker** (AML/KYC Automation)
+  - Persona: Compliance Analyst
+  - Goal: Automate corporate client onboarding and beneficial owner extraction
+
+### Data Requirements
+- **Structured data**: CUSTOMERS, ACCOUNTS, TRANSACTIONS, LOANS, BRREG_CORPORATE
+- **Unstructured data**: Economic reports (~100 docs), Compliance documents (~75 docs)
+- **Integration**: 20-30% customer overlap with Insurance policies
+
+### Acceptance Criteria
+- **Client Insights**: Holistic customer summary, life event detection, product recommendations
+- **Mortgage Risk**: Internal history, regional market analysis, employment risk, decision support
+- **Compliance**: Entity extraction, registry verification, sanctions screening, discrepancy flagging
+
+### Volume Defaults
+- Structured: ~25k customers, ~100k accounts, ~50M transactions, ~15k loans
+- Unstructured: ~100 economic reports, ~75 compliance docs
+
+---
+
+## Phase 3: Asset Management (Investment & ESG)
+
+### Purpose & Scope
+Deliver demo-ready Snowflake Intelligence experiences for Asset Management division, focusing on investment research, ESG monitoring, and alternative investment due diligence. Completes the full Snowdrift Financials ecosystem.
+
+### Personas & Scenarios
+- **Nordic Thematic Analyst** (Investment Research)
+  - Persona: Senior Portfolio Manager
+  - Goal: Rapidly identify and validate investment themes using multi-source research synthesis
+- **ESG Guardian** (Sustainability Monitoring)
+  - Persona: ESG Analyst
+  - Goal: Proactively monitor portfolio companies for ESG controversies and policy violations
+- **Due Diligence Co-Pilot** (Alternative Investments)
+  - Persona: Private Equity/Infrastructure Investment Analyst
+  - Goal: Accelerate due diligence through intelligent document analysis
+
+### Data Requirements
+- **Structured data**: SECURITIES_MASTER, DAILY_PRICES, FUNDAMENTALS, ESG_SCORES, PORTFOLIOS, PORTFOLIO_HOLDINGS
+- **Unstructured data**: Research corpus (~200 docs), ESG corpus (~150 docs), Due diligence corpus (~100 docs)
+- **Integration**: Investment products for high-net-worth Banking customers (>2M NOK)
+
+### Acceptance Criteria
+- **Thematic Analyst**: Top 3-5 sub-themes, company exposure analysis, performance charts, research synthesis
+- **ESG Guardian**: Portfolio controversy scanning, ESG policy retrieval, historical analysis, alert generation
+- **Due Diligence**: Document extraction, cross-referencing, risk identification, investment decision support
+
+### Volume Defaults
+- Structured: ~5k securities, ~10 portfolios, 5-year price history, ~50k holdings
+- Unstructured: ~200 research docs, ~150 ESG docs, ~100 due diligence docs
+
+---
+
+## Cross-Phase Integration Requirements
+
+### Customer Lifecycle
+- **Phase 1**: Individual insurance customers and policies
+- **Phase 2**: Banking customers with 20-30% insurance policy overlap
+- **Phase 3**: High-net-worth banking customers (>2M NOK) eligible for asset management
+
+### Data Consistency
+- **Geography**: Same Norwegian municipalities and postal codes across all phases
+- **Companies**: Consistent fictional business ecosystem
+- **Naming**: Unified Snowdrift Financials branding
+
+### Risk Correlation
+- **Insurance**: Property and casualty underwriting risk
+- **Banking**: Credit risk and customer relationship depth
+- **Asset Management**: Investment portfolio risk and performance
+- **Enterprise View**: Holistic risk assessment across all customer relationships
+
+### ESG Integration
+- **Insurance**: Sustainability considerations in underwriting decisions
+- **Banking**: ESG factors in lending and investment product recommendations
+- **Asset Management**: ESG scoring, controversy monitoring, and sustainable investment strategies
+- **Policy Consistency**: Unified ESG approach across entire organization

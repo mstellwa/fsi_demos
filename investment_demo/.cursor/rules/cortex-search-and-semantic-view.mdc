@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+description: Rules for Cortex Search services and the Semantic View used by Cortex Analyst
+---
+# Cortex Search & Semantic View Rules
+
+## Cortex Search Services (one per source type)
+- Refresh cadence: every 10 minutes.
+- Each service MUST expose (REQUIRED for Agent to function):
+  - **ID column** (REQUIRED): unique row identifier (e.g., `ARTICLE_ID`, `TRANSCRIPT_ID`, `REPORT_ID`, `CALL_ID`, `MEMO_ID`). This enables the Agent to reference specific documents.
+  - **TITLE column** (REQUIRED): human-readable title for citation (e.g., `HEADLINE`, `TITLE`, or synthesized title). This is what appears in citations to users.
+  - **CONTENT column** (REQUIRED): the field searched semantically (e.g., `ARTICLE_BODY`, `TRANSCRIPT_TEXT`, `REPORT_BODY`, or transcript text in VARCHAR).
+  - **ATTRIBUTES** for filtering/citations: timestamp/date, source/author, `COMPANY_ID` (nullable), `LANG` where applicable.
+- Source mappings:
+  - FACTSET_NEWS_FEED: ID=`ARTICLE_ID`, TITLE=`HEADLINE`, CONTENT=`ARTICLE_BODY`, ATTRIBUTES=`PUBLISH_TIMESTAMP`, `SOURCE`, `COMPANY_ID?`, `LANG`.
+  - GUIDEPOINT_EXPERT_TRANSCRIPTS: ID=`TRANSCRIPT_ID`, TITLE=`Expert Interview — <profile> — <date>` (must be generated), CONTENT=`TRANSCRIPT_TEXT` (markdown Q&A), ATTRIBUTES=`INTERVIEW_DATE`, `EXPERT_PROFILE`, `COMPANY_ID?`.
+  - MCBAINCG_CONSULTANT_REPORTS: ID=`REPORT_ID`, TITLE=`TITLE`, CONTENT=`REPORT_BODY` (markdown), ATTRIBUTES=`PUBLISH_DATE`, `EXECUTIVE_SUMMARY`, `COMPANY_ID?`.
+  - QUARTR_EARNINGS_CALLS: ID=`CALL_ID`, TITLE=`Earnings Call — <Company> — <Quarter>`, CONTENT=transcript text (markdown) stored in VARCHAR, ATTRIBUTES=`COMPANY_ID`, `CALL_TIMESTAMP`.
+  - INTERNAL_INVESTMENT_MEMOS: ID=`MEMO_ID`, TITLE=`SUBJECT`, CONTENT=`MEMO_BODY` (markdown), ATTRIBUTES=`CREATION_DATE`, `AUTHOR`, `SUBJECT_COMPANIES`.
+- Citation style in responses: `[Title] (SourceType, Date)`.
+
+## Semantic View (Cortex Analyst)
+- Logical tables: `companies`, `financials`, `macro_indicators` (and optional `calendar`).
+- Relationships: `financials.company_id` → `companies.company_id`.
+- Dimensions: company, sector, reporting period, region (via macro).
+- Metrics: 
+  - total revenue, total COGS, gross margin %
+  - revenue growth (QoQ/YoY)
+  - **last_quarter_revenue**: for ranking "top 3" companies
+  - **total_revenue_trailing_4q**: alternative ranking metric
+- Ranking: "Top 3" companies determined by `last_quarter_revenue` DESC
+- Add `COMMENT` and `WITH SYNONYMS` for all supported elements to aid NL→SQL.
+- The view should be directly queryable with SQL for validation.

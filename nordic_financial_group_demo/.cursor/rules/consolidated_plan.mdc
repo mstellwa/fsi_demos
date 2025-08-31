@@ -1,0 +1,260 @@
+---
+alwaysApply: true
+---
+# Snowdrift Financials - Consolidated Project Plan
+
+## Common Implementation Patterns (All Phases)
+
+### Standard Milestone Structure
+- **M1 - Foundations**: Database, schemas, CONTROL framework setup
+- **M2 - Structured Data**: Generate core business entities with realistic patterns  
+- **M3 - Semantic View**: Create proper SEMANTIC VIEW with TABLES, RELATIONSHIPS, FACTS, DIMENSIONS, METRICS
+- **M4 - Unstructured Content**: Generate document corpora using PROMPTS table workflow and Cortex Complete
+- **M5 - Search Services**: Create and configure Cortex Search services with SEARCH_PREVIEW testing
+- **M6 - Agent Configuration**: Set up agents in Snowsight with Response/Planning instruction split
+- **M7 - Demo Preparation**: Finalize scripts, testing, and validation
+
+### Implementation Best Practices
+- **Always Real Data**: No test modes, always connect to Snowflake and generate actual data
+- **Session Management**: Use `Session.builder.config("connection_name", name).create()`
+- **Data Persistence**: Always use `session.write_pandas()` with standardized parameters
+- **Validation**: Return Snowpark DataFrames and verify actual row counts
+- **Progress Tracking**: Comprehensive logging for long-running operations
+- **Deterministic Results**: Use seeds for reproducible data generation
+- **V2 Implementations**: Use proper SEMANTIC VIEW syntax and PROMPTS table workflow for Complete
+- **Agent Instructions**: Always split into Response Instructions (how to respond) and Planning Instructions (tool selection)
+- **Model Configuration**: Support configurable primary/fallback models (claude-4-sonnet → llama3.1-8b)
+- **Search Service Testing**: Use SEARCH_PREVIEW if available, fallback to document count verification
+
+### Quality Assurance
+- **Smoke Tests**: Validate each component before proceeding
+- **End-to-End Testing**: Full scenario walkthroughs within 10-15 minutes
+- **Data Validation**: Cross-check expected vs actual record counts
+- **Agent Validation**: Test responses include proper citations and expected artifacts
+- **Integration Testing**: Verify cross-division data relationships
+
+### Risk Management
+- **Incremental Delivery**: Each milestone produces working, testable components
+- **Fallback Options**: Alternative approaches for model/service failures
+- **Performance Monitoring**: Ensure demo scenarios complete within time constraints
+- **Documentation**: Clear setup procedures and troubleshooting guides
+
+---
+
+## Phase 1: Insurance Project Plan
+
+### Objectives
+Deliver two demo-ready scenarios with deterministic, configurable data and investigator-style agents: Claims Intake Assistant and Underwriting Co-Pilot.
+
+### Milestones & Deliverables
+
+#### M1 - Insurance Foundations
+- **Database Setup**: SNOWDRIFT_FINANCIALS with INSURANCE, INSURANCE_ANALYTICS, CONTROL schemas
+- **CONTROL Framework**: CONFIG, PROMPTS, PROMPT_RUNS tables with configuration management
+- **Table Creation**: All structured and unstructured table schemas
+- **Outcome**: Foundation ready for data generation
+
+#### M2 - Insurance Structured Data  
+- **Geographic Data**: Norwegian municipalities with flood risk scores (1-10 scale)
+- **Business Registry**: Synthetic BRREG data with realistic Norwegian companies
+- **Insurance Policies**: ~20k policies with risk-based pricing
+- **Claims Data**: ~30k claims with geographic correlation patterns
+- **Outcome**: ~56k structured records with realistic Norwegian insurance patterns
+
+#### M3 - Insurance Semantic View
+- **SEMANTIC VIEW**: Proper NORWEGIAN_INSURANCE_SEMANTIC_VIEW with TABLES, RELATIONSHIPS, FACTS, DIMENSIONS, METRICS
+- **Components**: All elements include COMMENT and WITH SYNONYMS for natural language access
+- **Structure**: TABLES (policies, claims, geo_risk), RELATIONSHIPS, FACTS, DIMENSIONS, METRICS
+- **Validation**: Use SEMANTIC_VIEW() query syntax for testing
+- **Outcome**: Cortex Analyst ready with proper SEMANTIC VIEW syntax
+
+#### M4 - Insurance Unstructured Content
+- **Workflow**: Generate prompts → Store in CONTROL.PROMPTS → Create Snowpark DataFrame → with_column(Complete()) → save_as_table()
+- **Claims Documents**: ~150 docs (police reports, medical reports, witness statements)
+- **Underwriting Documents**: ~120 docs (risk briefs, flood advisories, environmental news)
+- **Models**: Configurable claude-4-sonnet (primary) with llama3.1-8b fallback
+- **Content Generation**: Markdown stored in CONTENT_MD columns with full audit trail
+- **Outcome**: Search-ready document corpus with proper PROMPTS table lineage tracking
+
+#### M5 - Insurance Search Services
+- **Claims Service**: CLAIMS_SEARCH_SERVICE over CLAIMS_DOCUMENTS with ID, TITLE, DOC_TYPE attributes
+- **Underwriting Service**: UNDERWRITING_SEARCH_SERVICE over UNDERWRITING_DOCUMENTS
+- **Configuration**: Proper TARGET_LAG ('1 minute') and attribute setup for demo performance
+- **Testing**: Use SEARCH_PREVIEW function if available, otherwise verify document counts
+- **Outcome**: Cortex Search services validated and responsive with comprehensive testing
+
+#### M6 - Insurance Agent Configuration
+- **Claims Intake Assistant**: Cortex Analyst + CLAIMS_SEARCH_SERVICE for claims processing
+- **Underwriting Co-Pilot**: Cortex Analyst + UNDERWRITING_SEARCH_SERVICE for risk assessment
+- **Instructions Structure**: Split into Response Instructions (tone, style, capabilities) and Planning Instructions (tool selection strategy)
+- **Response Instructions**: Define investigator style, citation format, output structure, domain expertise
+- **Planning Instructions**: Specify workflow guidance, search strategies, tool selection criteria, escalation rules
+- **Outcome**: End-to-end agent workflows functional in Snowsight with proper instruction separation
+
+#### M7 - Insurance Demo Readiness
+- **Demo Scripts**: 10-15 minute walkthroughs per scenario
+- **Validation**: All acceptance criteria met with proper artifacts
+- **Documentation**: Setup procedures and troubleshooting guides
+- **Outcome**: Production-ready insurance scenarios
+
+### Success Criteria
+- Claims Intake: Incident summary, medical extraction, inconsistency detection with citations
+- Underwriting Co-Pilot: History retrieval, flood risk assessment, adverse media, recommendations
+- Performance: All scenarios complete within 15-minute windows
+- Data Quality: Deterministic generation with Norwegian realism
+
+---
+
+## Phase 2: Banking Project Plan
+
+### Objectives  
+Deliver three demo-ready Banking scenarios building on Phase 1 Insurance foundation, demonstrating cross-division customer insights and comprehensive risk assessment.
+
+### Milestones & Deliverables
+
+#### M1 - Banking Foundations
+- **Schema Extension**: BANK and BANK_ANALYTICS schemas in existing database
+- **Cross-References**: Customer linking strategy to Phase 1 Insurance data
+- **Configuration**: Extended CONTROL.CONFIG with Banking-specific parameters
+- **Outcome**: Banking environment ready with Phase 1 integration
+
+#### M2 - Banking Structured Data
+- **Customer Base**: ~25k Norwegian customers with realistic demographics
+- **Account Data**: ~100k accounts (checking, savings, mortgage) with realistic balances
+- **Transaction History**: ~50M transactions with Norwegian spending patterns and life events
+- **Loan Portfolio**: ~15k loans with property valuations and risk assessments
+- **Cross-References**: 20-30% customer overlap with existing Insurance policies
+- **Outcome**: Comprehensive banking dataset with cross-division integration
+
+#### M3 - Banking Customer 360 View
+- **CUSTOMER_360_VIEW**: Semantic view spanning Banking and Insurance data
+- **Business Terminology**: Banking and financial services language with synonyms
+- **Cross-Division Queries**: Validated golden questions spanning both divisions
+- **Outcome**: Cortex Analyst supporting holistic customer analysis
+
+#### M4 - Banking Unstructured Content
+- **Economic Reports**: ~100 docs covering Norwegian regional housing markets and employment
+- **Compliance Documents**: ~75 docs for corporate onboarding and beneficial ownership
+- **Content Integration**: Norwegian geographic focus consistent with Phase 1
+- **Outcome**: External context data for risk assessment and compliance automation
+
+#### M5 - Banking Search Services
+- **Economic Data Service**: Regional and municipal economic intelligence
+- **Compliance Service**: Corporate document search and entity verification
+- **Performance Tuning**: Optimized for risk assessment and compliance workflows
+- **Outcome**: External data accessible via natural language search
+
+#### M6 - Banking Agent Configuration
+- **Client Insights 360**: Customer relationship management across divisions
+- **Mortgage Risk Advisor**: Credit risk with external economic context
+- **Compliance Doc-Checker**: Automated AML/KYC document processing
+- **Integration Testing**: Cross-division customer insights and recommendations
+- **Outcome**: Banking workflows with cross-selling and risk intelligence
+
+#### M7 - Banking Demo Readiness
+- **Cross-Division Demos**: Customer journeys spanning Banking and Insurance
+- **Integration Validation**: Meaningful cross-sell recommendations and risk correlation
+- **Performance Verification**: 10-15 minute scenarios with external data integration
+- **Outcome**: Banking scenarios ready with Phase 1 integration demonstrated
+
+### Success Criteria
+- Client Insights: Holistic summaries, life event detection, cross-division product recommendations
+- Mortgage Risk: Internal history + external economic analysis with decision support
+- Compliance: Automated entity extraction, verification, and discrepancy detection
+- Integration: True enterprise customer view across Banking and Insurance
+
+---
+
+## Phase 3: Asset Management Project Plan
+
+### Objectives
+Complete the Snowdrift Financials ecosystem with sophisticated Asset Management capabilities, demonstrating enterprise-wide customer journey and advanced investment analytics.
+
+### Milestones & Deliverables
+
+#### M1 - Asset Management Foundations
+- **Schema Creation**: ASSET_MGMT and ASSET_MGMT_ANALYTICS schemas
+- **Customer Targeting**: High-net-worth identification from Banking data (>2M NOK)
+- **ESG Framework**: Sustainability policy alignment across all divisions
+- **Outcome**: Investment-grade foundation with enterprise integration
+
+#### M2 - Securities Universe & Market Data
+- **Securities Master**: ~5k global securities with Nordic/European focus (60%)
+- **Price History**: 5-year daily prices with realistic sector volatility and correlations
+- **Fundamental Data**: Revenue, earnings, balance sheet data aligned with performance
+- **Market Structure**: Realistic market capitalizations and trading patterns
+- **Outcome**: Comprehensive investment universe for portfolio construction
+
+#### M3 - ESG & Research Infrastructure
+- **ESG Scoring**: Multi-provider scores with temporal evolution and controversy impact
+- **Research Corpus**: ~200 docs covering thematic analysis and investment recommendations
+- **ESG Documents**: ~150 docs including sustainability reports and controversy articles
+- **Integration**: ESG consistency across Insurance underwriting and Banking lending
+- **Outcome**: Multi-dimensional investment research and sustainability analysis
+
+#### M4 - Portfolio & Holdings Framework
+- **Investment Portfolios**: ~10 portfolios with realistic strategies and benchmarks
+- **Holdings Data**: ~50k holdings with historical changes and performance attribution
+- **Performance Analytics**: Risk metrics, alpha generation, and factor analysis
+- **Outcome**: Professional portfolio management and performance measurement
+
+#### M5 - Investment Analytics View
+- **INVESTMENT_VIEW**: Comprehensive semantic view with advanced investment terminology
+- **Cross-Division Integration**: Customer wealth progression and risk correlation analysis
+- **Advanced Calculations**: Alpha, Sharpe ratios, ESG momentum, sector allocation
+- **Golden Questions**: Sophisticated investment and ESG analysis validation
+- **Outcome**: Natural language access to institutional-grade investment analytics
+
+#### M6 - Research & ESG Search Services
+- **Research Service**: Thematic analysis and company-specific investment insights
+- **ESG Service**: Controversy monitoring and sustainability assessment
+- **Due Diligence Service**: Alternative investment document analysis
+- **Performance Optimization**: Tuned for complex investment research workflows
+- **Outcome**: Comprehensive research synthesis and due diligence acceleration
+
+#### M7 - Investment Agent Configuration
+- **Nordic Thematic Analyst**: Multi-source research synthesis with thematic opportunities
+- **ESG Guardian**: Proactive portfolio monitoring with sustainability risk assessment
+- **Due Diligence Co-Pilot**: Alternative investment analysis with risk identification
+- **Enterprise Integration**: Investment recommendations for qualified Banking customers
+- **Outcome**: Professional investment workflows with AI-assisted decision making
+
+#### M8 - Enterprise Integration Validation
+- **Customer Journey**: Complete progression from Banking → Insurance → Asset Management
+- **Risk Correlation**: Investment risks analyzed alongside Insurance and Banking exposures
+- **ESG Consistency**: Unified sustainability approach across all business decisions
+- **Cross-Selling**: Intelligent investment product recommendations for Banking customers
+- **Outcome**: Unified enterprise intelligence with sophisticated cross-division insights
+
+### Success Criteria
+- Thematic Analyst: Multi-source research synthesis with investment themes and performance analysis
+- ESG Guardian: Proactive controversy detection with severity assessment and recommended actions
+- Due Diligence: Document analysis with risk identification and investment decision support
+- Enterprise Integration: Complete customer lifecycle with cross-division risk and ESG consistency
+
+---
+
+## Cross-Phase Dependencies & Integration
+
+### Sequential Dependencies
+- **Phase 1 → Phase 2**: Insurance policies required for Banking customer cross-references
+- **Phase 2 → Phase 3**: Banking wealth data required for Asset Management targeting
+- **All Phases**: Shared CONTROL framework and Norwegian geographic consistency
+
+### Data Integration Points
+- **Customer Overlap**: 20-30% Insurance → Banking, high-net-worth Banking → Asset Management
+- **Geographic Consistency**: Same Norwegian municipalities across all divisions
+- **Risk Correlation**: Holistic view of customer relationships and exposure concentration
+- **ESG Integration**: Sustainability policies consistent across underwriting, lending, and investing
+
+### Technical Dependencies  
+- **Shared Infrastructure**: CONTROL schema, connection management, data validation patterns
+- **Performance Requirements**: All scenarios must complete within 10-15 minute windows
+- **Agent Integration**: Cross-division insights require successful prior phase implementations
+- **Search Service Coordination**: Document repositories must support cross-division analysis
+
+### Success Metrics (Enterprise Level)
+- **Complete Customer Journey**: Seamless progression across all three divisions
+- **Risk Intelligence**: Comprehensive view of customer relationships and exposure correlation
+- **ESG Consistency**: Unified sustainability approach driving business decisions across organization
+- **Performance**: All enterprise scenarios demonstrate sophisticated AI-powered workflows within timing constraints

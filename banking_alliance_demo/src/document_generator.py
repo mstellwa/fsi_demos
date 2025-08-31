@@ -308,17 +308,19 @@ class DocumentGenerator:
             },
             {
                 'target_entity': 'Bergen Green Building Complex',
-                'prompt_text': """Write loan documentation for a LEED-certified commercial development.
+                'prompt_text': """Write loan documentation for a dual-certified commercial development pursuing both LEED and BREEAM certification.
                 Include detailed coverage of:
-                - Building specifications and LEED Platinum certification targets
-                - Energy efficiency features and systems
-                - Sustainable materials and construction practices
-                - Water conservation and waste reduction measures
-                - Expected environmental performance metrics
-                - Third-party verification and certification process
+                - Building specifications and dual certification strategy (LEED Platinum + BREEAM Excellent targets)
+                - Energy efficiency features and systems alignment with both standards
+                - Sustainable materials and construction practices meeting LEED and BREEAM requirements
+                - Water conservation and waste reduction measures for dual compliance
+                - Expected environmental performance metrics for both certification schemes
+                - Third-party verification and certification process timeline for LEED and BREEAM
+                - Documentation requirements and assessment criteria gaps between standards
                 - Loan structure and green bond framework compliance
+                - Cost-benefit analysis of dual certification approach
                 
-                Format as professional loan documentation. Length: 500-600 words."""
+                Format as professional loan documentation. Length: 600-700 words."""
             }
         ]
         
@@ -340,6 +342,22 @@ class DocumentGenerator:
                 - Ongoing monitoring and verification procedures
                 
                 Format as professional third-party assessment report. Length: 600-700 words."""
+            },
+            {
+                'target_entity': 'BREEAM Certification Assessment',
+                'prompt_text': """Write a comprehensive BREEAM (Building Research Establishment Environmental Assessment Method) certification assessment report for green building projects.
+                Include detailed coverage of:
+                - BREEAM rating scheme overview (Pass, Good, Very Good, Excellent, Outstanding)
+                - Assessment criteria across all BREEAM categories: Energy, Health & Wellbeing, Innovation, Land Use, Materials, Management, Pollution, Transport, Waste, Water
+                - Specific requirements for BREEAM Excellent and Outstanding ratings
+                - Documentation requirements for each assessment category
+                - Comparison with LEED certification standards and Norwegian TEK building regulations
+                - Third-party verification and assessment process timeline
+                - Cost implications and certification fees structure
+                - Ongoing monitoring and post-occupancy evaluation requirements
+                - Green bond framework compliance and reporting alignment
+                
+                Format as professional certification assessment report. Include specific BREEAM credit requirements and scoring methodology. Length: 700-800 words."""
             }
         ]
         

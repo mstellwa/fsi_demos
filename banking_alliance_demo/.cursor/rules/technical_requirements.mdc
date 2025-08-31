@@ -227,3 +227,14 @@ Based on Scenario 4 Step 2 testing, ensure document generation aligns with scena
 - **Search corpus testing**: Validate agent search queries against generated document corpus during setup
 - **Prevention**: Map scenario steps to required document types before implementing document generation logic
 
+## 17. Semantic View Completeness Requirements (SCENARIO DATA ACCESS)
+Based on Scenario 4 SMB data access failure, ensure semantic views include all tables required by demo scenarios:
+- **Table completeness validation**: All scenario-critical tables must be included in semantic view TABLES section
+- **Relationship mapping**: Ensure all required relationships between tables are properly defined
+- **Metric accessibility**: Scenario-specific metrics must be properly defined with appropriate aggregation functions
+- **Granularity constraints**: Semantic views have architectural restrictions on mixing granularity levels - may require multiple targeted queries
+- **Agent query strategy**: For complex analysis, agents may need to use multiple semantic view queries rather than single complex queries
+- **ALLIANCE_PERFORMANCE requirement**: Scenario 4 (Cross-Alliance Strategic Inquiry) requires SMB metrics from ALLIANCE_PERFORMANCE table
+- **Validation requirement**: Test agent access to scenario-critical metrics during setup validation (e.g., smb_growth_percentage, cost_income_ratio)
+- **Prevention**: Map each demo scenario to required tables and ensure semantic view includes all necessary components
+

@@ -1,0 +1,233 @@
+---
+alwaysApply: true
+---
+
+# SAM Demo - Architecture & Implementation Guide
+
+**Date**: December 2024  
+**Status**: Production Architecture  
+**Purpose**: Current state documentation and implementation guide for maintenance/enhancement
+
+---
+
+## 🏗️ **UNIFIED ORCHESTRATOR ARCHITECTURE**
+
+### **Master Setup Script**: `setup/unified_setup.py`
+**Single Entry Point**: `python setup/unified_setup.py`
+**Execution Pattern**: Sequential modular component execution
+**Database Context**: `FSI_DEMOS.SAM_DEMO` (explicitly set for all operations)
+
+### **File Structure (Post-Cleanup)**
+```
+BG_demo/
+├── setup/
+│   ├── unified_setup.py                    # 🚀 MAIN ENTRY POINT
+│   ├── AGENT_SETUP_INSTRUCTIONS.md        # Agent configuration guide
+│   ├── demo_validation_checklist.md       # Testing and validation
+│   ├── final_verification.py              # Infrastructure verification
+│   ├── diagnose_corporate_memory.sql      # Troubleshooting tool
+│   └── semantic_views_reference.sql       # Reference documentation
+│
+├── sql/                                    # Modular SQL Components
+│   ├── 01_create_database_schema.sql      # Database and schema creation
+│   ├── 02_create_structured_tables.sql    # All tables with foreign keys
+│   ├── 03_populate_sample_data.sql        # Enhanced data + prompt templates
+│   └── 04_create_services_and_views.sql   # Semantic views with RELATIONSHIPS
+│
+├── python/
+│   └── generate_synthetic_data.py         # Document generation module
+│
+├── connections.toml.template              # Connection configuration
+├── requirements.txt                       # Python dependencies
+└── README.md                              # Main documentation
+```
+
+---
+
+## 🔄 **EXECUTION SEQUENCE**
+
+### **Phase 1: Infrastructure Setup**
+```python
+# SQL files executed in strict sequence
+execute_sql_file(session, "sql/01_create_database_schema.sql")
+execute_sql_file(session, "sql/02_create_structured_tables.sql") 
+execute_sql_file(session, "sql/03_populate_sample_data.sql")
+execute_sql_file(session, "sql/04_create_services_and_views.sql")
+```
+
+### **Phase 2: Document Generation (Optimized)**
+```python
+# CRITICAL: Uses SQL-based bulk generation (10x faster)
+rendered_prompts = generate_synthetic_data.render_all_prompts(session)
+generate_synthetic_data.store_rendered_prompts_to_table(session, rendered_prompts)
+doc_count = generate_synthetic_data.bulk_generate_documents_with_sql(session)
+```
+
+### **Phase 3: Search Services Creation**
+```python
+# Creates 3 services with proper ATTRIBUTES including DOC_ID, FILE_URL
+create_cortex_search_services(session)
+```
+
+### **Phase 4: Verification**
+```python
+# Comprehensive verification of all components
+verify_complete_setup(session)
+```
+
+---
+
+## 🗄️ **DATABASE SCHEMA**
+
+### **Core Tables**
+- **COMPANY_FINANCIALS**: Financial data with R&D spending (8 quarters for Tempus AI)
+- **CLIENT_CRM**: Client information with stated interests for personalization
+- **CLIENT_PORTFOLIOS**: Portfolio performance and holdings data
+- **PORTFOLIO_HOLDINGS_HISTORY**: Transaction history for client scenarios
+- **DOCUMENTS**: Central document store (VARCHAR 16MB) with change tracking enabled
+
+### **Document Generation Tables**
+- **PROMPT_LIBRARY**: Template definitions with SAM philosophy integration
+- **PROMPT_INPUTS**: Specific generation parameters (30 prompt inputs)
+- **RENDERED_PROMPTS**: Optimized bulk generation (stores rendered prompts)
+
+### **Critical Configuration**
+```sql
+-- Required for Cortex Search compatibility
+ALTER TABLE DOCUMENTS SET CHANGE_TRACKING = TRUE;
+
+-- Foreign key relationships for semantic views
+FOREIGN KEY (CLIENT_ID) REFERENCES CLIENT_CRM(CLIENT_ID)
+FOREIGN KEY (PORTFOLIO_ID) REFERENCES CLIENT_PORTFOLIOS(PORTFOLIO_ID)
+```
+
+---
+
+## 🔍 **CORTEX SEARCH SERVICES**
+
+### **Service Configuration (CRITICAL)**
+**MANDATORY ATTRIBUTES Configuration**:
+```sql
+CREATE CORTEX SEARCH SERVICE service_name
+ON CONTENT
+ATTRIBUTES DOC_ID, FILE_URL, COMPANY_NAME, DOCUMENT_TYPE, DOC_DATE, AUTHOR
+WAREHOUSE = COMPUTE_WH
+TARGET_LAG = '1 hour'
+AS (
+  SELECT CONTENT, DOC_ID, FILE_URL, COMPANY_NAME, DOCUMENT_TYPE, DOC_DATE, AUTHOR
+  FROM DOCUMENTS 
+  WHERE filter_conditions
+)
+```
+
+### **Three Services Created**
+1. **research_service**: Research documents and analysis (8 documents)
+2. **corporate_memory_service**: Historical and internal documents (15 documents)  
+3. **marketing_content_service**: Approved SAM messaging (3 documents)
+
+---
+
+## 🤖 **AGENT CONFIGURATION**
+
+### **🔬 Curiosity Co-Pilot (Research Analyst)**
+**Tools**:
+- `research_service` (ID: DOC_ID, Title: FILE_URL)
+- `FINANCIAL_DATA_ANALYST` (semantic view)
+
+**Key Capabilities**: 10-Question Framework, hybrid analysis, R&D trends
+
+### **🎯 Conviction Engine (Portfolio Manager)**  
+**Tools**:
+- `corporate_memory_service` (ID: DOC_ID, Title: FILE_URL)
+
+**Key Capabilities**: Thesis evolution, pre-mortem analysis, corporate memory
+
+### **👥 Personalization & Narrative Suite (Client Manager)**
+**Tools**:
+- `research_service` (ID: DOC_ID, Title: FILE_URL)
+- `FINANCIAL_DATA_ANALYST` (semantic view)
+- `marketing_content_service` (ID: DOC_ID, Title: FILE_URL)
+
+**Key Capabilities**: Meeting notes, client personalization, ESG integration
+
+---
+
+## 📊 **SEMANTIC VIEWS**
+
+### **FINANCIAL_DATA_ANALYST**
+```sql
+CREATE OR REPLACE SEMANTIC VIEW FINANCIAL_DATA_ANALYST
+  TABLES (
+    company_financials AS COMPANY_FINANCIALS PRIMARY KEY (COMPANY_ID, REPORT_DATE)
+  )
+  FACTS (
+    company_financials.revenue_usd_m AS revenue_usd_m,
+    company_financials.rd_spend_usd_m AS rd_spend_usd_m
+  )
+  METRICS (
+    company_financials.rd_intensity AS AVG(rd_spend_usd_m / NULLIF(revenue_usd_m, 0) * 100)
+  );
+```
+
+### **CLIENT_DATA_ANALYST**
+```sql
+CREATE OR REPLACE SEMANTIC VIEW CLIENT_DATA_ANALYST
+  TABLES (
+    client_crm AS CLIENT_CRM PRIMARY KEY (CLIENT_ID),
+    client_portfolios AS CLIENT_PORTFOLIOS PRIMARY KEY (PORTFOLIO_ID)
+  )
+  RELATIONSHIPS (
+    client_crm_to_client_portfolios AS 
+      client_portfolios (client_id) REFERENCES client_crm
+  );
+```
+
+---
+
+## 🔧 **MAINTENANCE & TROUBLESHOOTING**
+
+### **Common Issues & Solutions**
+1. **"Document indexing misconfigured"**: Missing ID/Title columns in agent tools
+2. **Empty search results**: Search services still indexing (wait 2-3 minutes)
+3. **Agent tool errors**: Wrong database/schema context
+4. **Slow document generation**: Ensure using optimized bulk SQL generation
+
+### **Diagnostic Tools**
+- `setup/diagnose_corporate_memory.sql`: Comprehensive troubleshooting queries
+- `setup/final_verification.py`: Infrastructure verification script
+- `SEARCH_PREVIEW` function: Test search services directly
+
+### **Key Verification Commands**
+```sql
+-- Verify documents have required columns
+SELECT COUNT(*) FROM DOCUMENTS WHERE DOC_ID IS NOT NULL AND FILE_URL IS NOT NULL;
+
+-- Test search service
+SELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW('CORPORATE_MEMORY_SERVICE', '{"query": "Arkadia Commerce 2019", "limit": 3}'))['results'];
+
+-- Check semantic views
+SHOW SEMANTIC VIEWS IN SCHEMA SAM_DEMO;
+```
+
+---
+
+## 🚀 **EXTENSION GUIDELINES**
+
+### **Adding New Companies**
+1. Add financial data to `sql/03_populate_sample_data.sql`
+2. Create prompt inputs for document generation
+3. Ensure 5+ quarters of data for realistic analysis
+
+### **Adding New Document Types**
+1. Create prompt template in PROMPT_LIBRARY
+2. Add classification in `python/generate_synthetic_data.py`
+3. Update search service filters if needed
+
+### **Adding New Agents**
+1. Create semantic view if structured data needed
+2. Configure tools with proper ID/Title columns
+3. Follow SAM philosophy integration requirements
+
+---
+
+This architecture guide provides the complete technical foundation for maintaining and extending the SAM Snowflake Intelligence demo.

@@ -1,0 +1,12 @@
+# Phase 1A Requirements for SAM Demo
+# Snowflake packages for data generation and agent setup
+
+snowflake-snowpark-python>=1.11.0
+snowflake-ml-python>=1.0.0
+
+# Standard Python libraries (usually included)
+os
+json
+pathlib
+datetime
+sys

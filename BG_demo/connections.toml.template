@@ -1,0 +1,29 @@
+# Snowflake connections configuration template
+# Copy this to connections.toml and update with your credentials
+# Based on: https://docs.snowflake.com/en/developer-guide/snowpark/python/creating-session#connect-by-using-the-connections-toml-file
+
+[sfseeurope-mstellwall-aws-us-west3]
+account = "YOUR_ACCOUNT_NAME"
+user = "YOUR_USERNAME"
+password = "YOUR_PASSWORD"
+warehouse = "COMPUTE_WH"
+database = "FSI_DEMOS"
+schema = "SAM_DEMO"
+role = "ACCOUNTADMIN"
+
+# Optional: Add a test connection
+[test]
+account = "YOUR_ACCOUNT_NAME"
+user = "YOUR_USERNAME"  
+password = "YOUR_PASSWORD"
+warehouse = "COMPUTE_WH"
+database = "FSI_DEMOS"
+schema = "SAM_DEMO"
+role = "ACCOUNTADMIN"
+
+# Instructions:
+# 1. Copy this file to connections.toml
+# 2. Replace YOUR_ACCOUNT_NAME with your Snowflake account identifier
+# 3. Replace YOUR_USERNAME with your Snowflake username
+# 4. Replace YOUR_PASSWORD with your Snowflake password
+# 5. Update warehouse, role as needed for your environment

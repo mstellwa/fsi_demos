@@ -1,0 +1,39 @@
+---
+alwaysApply: true
+description: Rules for synthetic data generation with Snowpark and Cortex Complete
+---
+# Data Generation Rules
+
+## General
+- History: 18 quarters (structured) and 48 months (macro).
+- Sub-sector focus: logistics; generate 10–12 companies.
+- Deterministic: use a fixed random seed; regenerate stable data.
+- MANDATORY: "Nordic Freight Systems" must always exist with:
+  - Complete financial data for all 18 quarters
+  - At least 6 earnings call transcripts with pricing power commentary
+  - Coverage in news, reports, and memos
+- Ensure other anchor companies have substantial data coverage.
+- Regions: Nordics primary, EU hints. 10% Swedish news via provider name "SnowWire Nordics".
+
+## Snowpark & Pandas
+- Use Snowpark DataFrames wherever possible.
+- If Pandas is required, load via `Session.write_pandas(df, table_name, quote_identifiers=False)` and ensure Snowflake-compliant identifiers.
+- All unstructured outputs are stored in a single VARCHAR column per row.
+- Use markdown formatting for sources with layout (consultant reports, memos, transcripts).
+
+## Cortex Complete
+- Model for generation: `llama3.1-8b` by default; keep configurable.
+- Store prompts in a Snowflake table per source type with at least: `PROMPT_ID`, `SOURCE_TABLE`, `COMPANY_ID` (nullable), `TITLE_HINT`, `TOPIC_TAGS`, `PROMPT_TEXT`, `RANDOM_SEED`, `MODEL_NAME`.
+- Run `complete` against the prompts table via Snowpark DataFrame and persist results to the target tables.
+- Entity linking: include `COMPANY_ID` when appropriate (news, earnings, memos; experts/reports when clearly attributable).
+- Language: tag Swedish items with `LANG='sv'` and English with `LANG='en'`.
+
+## Data Volumes (guidance)
+- News: 40–60 (ensure coverage of anchor companies)
+- Expert transcripts: 10–12 (include logistics sector insights)
+- Consultant reports: 6–8 (at least 2 covering pricing strategies)
+- Earnings calls: 
+  - Nordic Freight Systems: minimum 6 quarters
+  - Other anchor companies: minimum 4 quarters each
+  - Remaining companies: at least 2 quarters each
+- Internal memos: 10–12 (include analysis of Nordic Freight Systems)

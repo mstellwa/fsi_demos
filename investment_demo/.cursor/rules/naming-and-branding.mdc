@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+description: Naming/branding constraints and localization for the Thematic Research demo
+---
+# Naming, Branding, Localization
+
+- Never use the real customer name. Use the fictional firm name from the design doc.
+- Swedish news provider name: `SnowWire Nordics`.
+- Include 10% Swedish-language news items (LANG='sv') from `SnowWire Nordics`.
+- Focus sub-sector: logistics; generate all company names fictionally.
+- REQUIRED anchor company (MUST exist with complete data across all sources):
+  - Nordic Freight Systems (mandatory for demo prompt #3 - must have pricing power quotes in earnings calls)
+- Additional anchor logistics companies (should exist with substantial data):
+  - Arctic Cargo AB
+  - Snowline Transport ASA
+  - Lapland Freight Oy
+  - Baltic Logistics Group
+- Regions emphasized: Nordics with EU hints.
+- Citation style in all outputs: `[Title] (SourceType, Date)`.

@@ -1,0 +1,72 @@
+# Snowdrift Financials - Phase 1 Insurance Configuration
+
+# Global Configuration
+global:
+  connection_name: "sfseeurope-mstellwall-aws-us-west3"
+  database: "SNOWDRIFT_FINANCIALS"
+  global_seed: 42
+  created_by: "snowdrift_phase1_setup"
+
+# Phase 1 - Insurance Configuration
+insurance:
+  # Module Configuration
+  module_seed: 1001
+  
+  # Structured Data Volumes (Reduced for network stability)
+  structured_data:
+    policies_count: 20000
+    claims_count: 5000
+    geo_locations_count: 2000
+    brreg_companies_count: 5000
+    history_years: 5
+    
+  # Unstructured Data Volumes (Light preset)
+  unstructured_data:
+    claims_documents: 150
+    underwriting_documents: 120
+    
+  # Data Generation Settings
+  data_generation:
+    norwegian_municipalities:
+      - "Oslo"
+      - "Bergen"
+      - "Stavanger"
+      - "Trondheim"
+      - "Tromsø"
+      - "Kristiansand"
+      - "Fredrikstad"
+      - "Tønsberg"
+      - "Drammen"
+      - "Skien"
+    
+    flood_risk_distribution:
+      low_risk: 0.6    # Score 1-3
+      medium_risk: 0.3 # Score 4-6
+      high_risk: 0.1   # Score 7-10
+    
+  # Content Generation (Cortex Complete)
+  content_generation:
+    default_model: "llama3.1-8b"
+    fallback_model: "llama3.1-8b"
+    temperature: 0.3
+    max_tokens: 2000
+    
+  # Cortex Search Configuration
+  search_services:
+    target_lag: "1 minute"
+    embedding_model: "default"
+    warehouse: "COMPUTE_WH"
+    
+  # Agent Configuration
+  agents:
+    orchestration_model: "claude-4"
+    language: "English"
+    response_style: "investigator"
+    
+# Demo Configuration
+demo:
+  scenario_duration_minutes: 15
+  claims_intake:
+    sample_claim_ids: []  # Will be populated after data generation
+  underwriting_copilot:
+    sample_company_names: []  # Will be populated after data generation

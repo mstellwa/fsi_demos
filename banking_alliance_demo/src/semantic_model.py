@@ -302,14 +302,18 @@ semantic_model:
                 COMMENT = 'Loan portfolio including mortgages, corporate loans, and green bond financing',
             financials AS FSI_DEMOS.BANK_DEMO.FINANCIALS PRIMARY KEY (RECORD_ID)
                 WITH SYNONYMS ('financial records', 'fee income', 'revenue data', 'financial performance')
-                COMMENT = 'Financial records including fee income, revenue streams, and customer profitability data'
+                COMMENT = 'Financial records including fee income, revenue streams, and customer profitability data',
+            alliance_performance AS FSI_DEMOS.BANK_DEMO.ALLIANCE_PERFORMANCE PRIMARY KEY (REPORTING_YEAR, MEMBER_BANK_ID)
+                WITH SYNONYMS ('performance metrics', 'SMB performance', 'efficiency metrics', 'alliance KPIs')
+                COMMENT = 'Alliance-wide performance metrics including SMB lending growth and cost-income ratios'
         )
         
         RELATIONSHIPS (
             customers (MEMBER_BANK_ID) REFERENCES member_banks,
             loans (CUSTOMER_ID) REFERENCES customers,
             loans (MEMBER_BANK_ID) REFERENCES member_banks,
-            financials (CUSTOMER_ID) REFERENCES customers
+            financials (CUSTOMER_ID) REFERENCES customers,
+            alliance_performance (MEMBER_BANK_ID) REFERENCES member_banks
             -- Note: market_data has no direct relationship as it represents peer companies for benchmarking
             -- Peer analysis is performed by matching customers.industry_sector with market_data.peer_group
         )
@@ -391,7 +395,12 @@ semantic_model:
                 COMMENT = 'Type of financial record (Fee Income, Interest Income, etc.)',
             financials.record_date AS record_date
                 WITH SYNONYMS ('transaction date', 'financial date', 'booking date', 'value date')
-                COMMENT = 'Date when financial transaction was recorded'
+                COMMENT = 'Date when financial transaction was recorded',
+            
+            -- Alliance Performance dimensions
+            alliance_performance.reporting_year AS reporting_year
+                WITH SYNONYMS ('year', 'performance year', 'reporting period', 'fiscal year')
+                COMMENT = 'Year for which alliance performance metrics are reported'
         )
         
         METRICS (
@@ -448,7 +457,15 @@ semantic_model:
                 COMMENT = 'Total fee revenue and income across all financial records in NOK',
             financials.ltm_fee_income AS SUM(CASE WHEN financials.record_type IN ('FEE_REVENUE', 'COMMISSION') AND financials.record_date >= DATEADD(month, -12, CURRENT_DATE()) THEN financials.amount ELSE 0 END)
                 WITH SYNONYMS ('LTM fees', 'last twelve months fees', 'trailing fee income', 'annual fee revenue')
-                COMMENT = 'Last twelve months fee income for customer profitability analysis in NOK'
+                COMMENT = 'Last twelve months fee income for customer profitability analysis in NOK',
+            
+            -- Alliance Performance metrics (SMB = Small-Medium Business)
+            alliance_performance.smb_growth_percentage AS AVG(alliance_performance.smb_lending_growth_pct)
+                WITH SYNONYMS ('SMB growth', 'small business growth', 'SMB lending growth', 'business lending growth')
+                COMMENT = 'Small-Medium Business lending growth percentage year-over-year',
+            alliance_performance.cost_income_ratio AS AVG(alliance_performance.cost_income_ratio)
+                WITH SYNONYMS ('C/I ratio', 'efficiency ratio', 'cost income ratio', 'operational efficiency')
+                COMMENT = 'Cost to income ratio indicating operational efficiency (lower is better)'
         );
         """
         

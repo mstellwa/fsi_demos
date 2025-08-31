@@ -1,0 +1,153 @@
+---
+alwaysApply: true
+---
+
+# SAM Snowflake Intelligence Demo - Requirements Specification
+
+**Date**: December 2024  
+**Status**: Final Requirements (Post-Implementation)  
+**Purpose**: Comprehensive requirements capturing all learnings from full development cycle
+
+---
+
+## 🎯 **BUSINESS REQUIREMENTS**
+
+### **Core Objectives**
+- **Audience**: Snowcap Asset Management (SAM) investment stakeholders
+- **Venue**: Snowsight Snowflake Intelligence (no custom UI required)
+- **Region**: AWS us-west-2 (Oregon) preferred for model availability
+- **Demo Structure**: 3 sequential scenarios (5-10 minutes each)
+
+### **SAM Philosophy Integration (MANDATORY)**
+**Required Terminology Throughout All Content**:
+- **"Patient capital"** - long-term conviction and support
+- **"Unusual thinking"** - contrarian and independent perspectives  
+- **"Actual Investor"** - engaged partnership approach
+- **"Exceptional growth companies"** - focus on outliers and transformation
+- **"Decades not quarters"** - 5-10+ year investment horizons
+
+### **Demo Scenarios (Sequential Flow)**
+
+#### **🔬 Scenario 1: Research Analyst (Curiosity Co-Pilot)**
+**Primary Flow**: 10-Question Framework driven analysis
+**Key Capabilities**:
+- Hybrid synthesis (SQL + documents + sentiment analysis)
+- Framework-structured responses using SAM methodology
+- R&D spending trend analysis (8-quarter capability)
+- Expert network and patent analysis integration
+- 5-10 year investment horizon framing
+
+**Sequential Prompts**:
+1. "Give me a high-level summary of our investment thesis on Tempus AI"
+2. "Scaffold analysis using 10-Question Framework for opportunity scale and competitive advantage"  
+3. "R&D trends over 8 quarters + earnings sentiment analysis with quotes"
+
+#### **🎯 Scenario 2: Portfolio Manager (Conviction Engine)**
+**Primary Flow**: Thesis evolution + pre-mortem using Corporate Memory
+**Key Capabilities**:
+- Side-by-side thesis evolution (2019 vs 2022)
+- Pre-mortem with historical failure pattern analysis
+- Corporate Memory competitive advantage demonstration
+- Internal debate summary synthesis
+
+**Sequential Prompts**:
+1. "Show original 2019 Arkadia Commerce investment thesis and key risks"
+2. "Track thesis evolution on competitive moat against Amazon (2019 vs 2022)"
+3. "Pre-mortem analysis based on firm's historical investment mistakes"
+
+#### **👥 Scenario 3: Client Manager (Personalization & Narrative Suite)**
+**Primary Flow**: Professional meeting preparation and client communications
+**Key Capabilities**:
+- Comprehensive meeting notes generation (600-900 words)
+- Client-specific ESG integration and personalization
+- Holdings narratives with research citations
+- SAM philosophy integration in client communications
+
+**Sequential Prompts**:
+1. "Generate meeting brief for Scottish Pension Trust with top holdings"
+2. "Draft personalized commentary on Voltaic Dynamics for energy transition focus"
+3. "Response to client concerns about EV supply chain issues"
+
+---
+
+## 🏗️ **TECHNICAL REQUIREMENTS**
+
+### **Architecture Principles**
+- **Unified Orchestrator**: Single entry point (`setup/unified_setup.py`)
+- **Modular Design**: Separate SQL, Python, and documentation components
+- **Sequential Execution**: Database → Data → Documents → Services → Verification
+- **Comprehensive Error Handling**: Graceful failure and rollback capabilities
+
+### **Performance Requirements**
+- **Document Generation**: 30 documents in ≤ 90 seconds (10x optimization achieved)
+- **Search Service Indexing**: ≤ 3 minutes for content availability
+- **Agent Response Time**: ≤ 30 seconds per query
+- **Setup Time**: Complete infrastructure deployment ≤ 5 minutes
+
+### **Data Requirements**
+- **Companies**: 6 companies with realistic financial progression
+- **Financial Data**: 8 quarters for primary companies (Tempus AI)
+- **Documents**: 30+ professional-grade synthetic documents
+- **Clients**: 3 institutional clients with detailed profiles
+- **Corporate Memory**: 5+ years of historical context (2019-2024)
+
+### **Agent Tool Configuration (CRITICAL)**
+**For ALL Cortex Search Service tools, MANDATORY configuration**:
+- **ID Column**: `DOC_ID`
+- **Title Column**: `FILE_URL`
+- **Without this**: Agents report "document indexing misconfigured" errors
+
+**Search Service ATTRIBUTES Must Include**:
+```sql
+ATTRIBUTES DOC_ID, FILE_URL, COMPANY_NAME, DOCUMENT_TYPE, DOC_DATE, AUTHOR
+```
+
+### **Document Classification Standards**
+- **Research Service**: ResearchNote, EarningsTranscript, FrameworkAnalysis, ExpertNetworkInterview, PatentAnalysis
+- **Corporate Memory Service**: HistoricalThesis, MeetingNotes, InternalDebateSummary  
+- **Marketing Content Service**: MarketingContent
+
+---
+
+## ✅ **SUCCESS CRITERIA**
+
+### **Technical Success**
+- All 30 documents generated with DOC_ID and FILE_URL
+- 3 search services ACTIVE with proper ATTRIBUTES
+- 2 semantic views with RELATIONSHIPS syntax
+- 100% setup verification checks passing
+
+### **Business Success**
+- SAM philosophy authentically integrated (5+ terms per response)
+- Framework-driven analysis with 3-4 citations minimum
+- Thesis evolution demonstrates Corporate Memory advantage
+- Professional meeting notes suitable for client presentation
+- Clear competitive differentiation vs Bloomberg/FactSet demonstrated
+
+### **Agent Response Quality**
+- **Research Analyst**: 10-Question Framework structure + hybrid analysis + contrarian insights
+- **Portfolio Manager**: Historical context + thesis evolution + systematic pre-mortem
+- **Client Manager**: Professional meeting notes + ESG alignment + personalized narratives
+
+---
+
+## 🏆 **COMPETITIVE ADVANTAGES TO DEMONSTRATE**
+
+### **vs Bloomberg Terminal**
+- Conversational interface with 20-year corporate memory archive
+- Integrated structured + unstructured data analysis
+- Long-term investment perspective (5-10+ years)
+
+### **vs FactSet**
+- SAM philosophy integration and framework methodology
+- Thesis evolution tracking over multiple years
+- Pre-mortem analysis grounded in historical experience
+
+### **vs Generic AI Tools**
+- Investment-specific knowledge and terminology
+- Corporate Memory as inimitable competitive advantage
+- Professional quality suitable for asset management
+
+---
+
+This requirements specification captures all learnings from the complete development cycle and serves as the definitive guide for future enhancements and maintenance.

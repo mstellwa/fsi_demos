@@ -148,6 +148,7 @@ AFTER: "Access to Nordic Banking Alliance semantic view containing customer port
 - LTM fee calculations must align with actual data generation patterns
 - Peer distributions must support "similar exposure" scenario requirements
 - Document types must match scenario time requirements (Q4 2024 vs 2023)
+- **Semantic view completeness**: All scenario-critical tables must be included in semantic views (discovered during Scenario 4 SMB data fix)
 
 ### 8.2 Agent Intelligence Enablement  
 - Tool descriptions must provide specific capabilities without hardcoding solutions

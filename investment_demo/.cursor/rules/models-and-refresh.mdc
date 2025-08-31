@@ -1,0 +1,31 @@
+---
+alwaysApply: true
+description: Models used for generation and agent, plus Cortex Search refresh cadence
+---
+# Models & Refresh Settings
+
+## Models
+- Unstructured data generation model: `llama3.1-8b` (configurable; set via parameter).
+- Agent model (configured manually in Snowsight): Claude 4.0.
+
+## Refresh & Indexing
+- Create one Cortex Search service per unstructured source type.
+- Set each service to refresh every 10 minutes.
+- Run an on-demand refresh after synthetic data generation when preparing a demo session.
+
+## Determinism
+- Use a fixed random seed for data generation.
+- Ensure anchor logistics companies always exist with complete coverage across sources.
+
+## Localization
+- Include 10% Swedish-language news items from provider `SnowWire Nordics` (`LANG='sv'`).
+- Store all unstructured content in a single `VARCHAR` column (use markdown for content with layout).
+
+## Title Generation Requirements (CRITICAL for Agent)
+- **MANDATORY**: All Cortex Search services MUST have a TITLE column for the Agent to function
+- Expert Transcripts: Generate title as "Expert Interview — [profile] — [date]"
+- Earnings Calls: Generate title as "Earnings Call — [Company] — [Quarter]"
+- News: Use existing `HEADLINE` field as TITLE
+- Reports: Use existing `TITLE` field
+- Memos: Use `SUBJECT` field as TITLE
+- All titles must be populated for proper citation formatting in Agent responses

@@ -1,0 +1,55 @@
+---
+alwaysApply: true
+description: High-level project overview and Snowflake setup for the Thematic Research demo
+---
+# Thematic Research Demo – Overview & Setup
+
+- Database: `THEMES_RESEARCH_DEMO`
+- Schemas: `RAW_DATA` (base data), `ANALYTICS` (Cortex Search services, Semantic View)
+- Warehouse: `COMPUTE_WH`
+- Session: use connections.toml. Build sessions via `Session.builder.config("connection_name", <name>).create()`; allow override at runtime.
+- No security setup (RBAC/users) in this demo; all scenarios use the same Snowflake user.
+- All unstructured content is stored as a single `VARCHAR` per row. Use markdown formatting when a layout makes sense (reports, memos, transcripts).
+- Regions: emphasize Nordics with EU context. Include 10% Swedish news items from provider name “SnowWire Nordics”.
+
+Authoritative context and prior design live here: [Snowflake AI Research Tool Demo.md](mdc:demo_research/Snowflake AI Research Tool Demo.md)
+
+## Components
+
+- Structured data: companies, macro indicators, company financials
+- Unstructured data: news, expert transcripts, consultant reports, earnings calls, internal memos
+- Cortex Search: one service per unstructured source type, refreshed every 10 minutes
+- Semantic View: single business model for quantitative Q&A via Cortex Analyst
+- Agent: configured manually in Snowsight; tool names use underscores; responses cite sources as `[Title] (SourceType, Date)`
+
+## Constraints & Principles
+
+- Prefer Snowpark DataFrames. If Pandas is used, load via `Session.write_pandas(..., quote_identifiers=False)` and ensure identifiers comply with Snowflake rules.
+- Deterministic generation: use a fixed seed; ensure anchor companies and required facts always exist for the scripted demo.
+- No chunking for unstructured content (MVP). Each document is a single row (with markdown where helpful).
+
+## Project Structure
+
+- Main entry point: `setup_demo.py` - orchestrates the entire demo setup
+- Core modules in `src/`:
+  - `config.py` - centralized configuration
+  - `generate_data.py` - data generation orchestrator
+  - `structured_data_generator.py` - companies, financials, macro data
+  - `unstructured_data_generator.py` - content generation via Cortex Complete
+  - `cortex_objects_creator.py` - creates Cortex Search services and Semantic Views (NOT a general SQL executor)
+  - `data_validator.py` - validation logic
+- Documentation in `docs/` and `demo_research/`
+- No static SQL files - all SQL is generated programmatically in `cortex_objects_creator.py`
+
+## Data Validation Requirements
+
+- After data generation, validate:
+  - Nordic Freight Systems exists with 6+ quarters of earnings calls
+  - Nordic Freight Systems has explicit pricing power commentary
+  - All 4 demo prompts can be answered with generated data
+  - Top 3 companies have sufficient financial data for comparison
+  - Swedish content is properly tagged with LANG='sv'
+- Pre-demo checklist:
+  - Run test queries for each demo prompt
+  - Verify Cortex Search services return results
+  - Confirm Semantic View metrics calculate correctly

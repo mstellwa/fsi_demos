@@ -1,0 +1,31 @@
+---
+alwaysApply: true
+description: References to demo script and key prompts for validation
+---
+# Demo Script Reference
+
+The complete demo script with narrative, storytelling, and detailed instructions is located in:
+**docs/demo_script.md**
+
+## Quick Reference: The 4 Demo Prompts
+
+These are the exact prompts used in the demo flow for validation and testing:
+
+1. **Broad thematic research:**
+   `Summarize the impact of rising inflation on Nordic logistics companies. Prefer recent sources.`
+
+2. **Quantitative analysis:**
+   `Compare gross margins over the last 6 quarters for the top 3 Nordic logistics firms. Show a chart.`
+
+3. **Management commentary:**
+   `Quote what management said about pricing power for "Nordic Freight Systems".`
+
+4. **Cross-source validation:**
+   `Do recent consultant reports and expert interviews agree with that pricing narrative? Summarize briefly.`
+
+## Key Demo Requirements
+
+- Nordic Freight Systems must exist with pricing power quotes in earnings calls
+- Top 3 companies determined by last_quarter_revenue metric
+- 10% of news should be in Swedish from SnowWire Nordics
+- All responses must include citations in format: [Title] (SourceType, Date)

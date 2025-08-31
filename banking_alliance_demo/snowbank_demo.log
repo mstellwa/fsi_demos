@@ -14904,3 +14904,91 @@ Argument number 0 for function 'COMPLETE$V6("values".MODEL_CLASS, "values".PROMP
 2025-08-25 12:03:16,808 - snowflake.snowpark.session - INFO - Canceling all running queries
 2025-08-25 12:03:18,221 - snowflake.snowpark.session - INFO - Closed session: 14521830075594914
 2025-08-25 12:03:18,222 - snowflake.snowpark.session - INFO - Closed session: 14521830075594914
+2025-08-27 22:19:10,780 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.17.1, Python Version: 3.10.13, Platform: macOS-15.6-arm64-arm-64bit
+2025-08-27 22:19:10,781 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-08-27 22:19:10,901 - botocore.credentials - INFO - Found credentials in shared credentials file: ~/.aws/credentials
+2025-08-27 22:19:10,902 - snowflake.connector.vendored.urllib3.connectionpool - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x174165240>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /
+2025-08-27 22:19:10,902 - snowflake.connector.vendored.urllib3.connectionpool - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x174165720>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /computeMetadata/v1/instance/service-accounts/default/email
+2025-08-27 22:19:11,102 - snowflake.connector.vendored.urllib3.connectionpool - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x174123cd0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/instance?api-version=2021-02-01
+2025-08-27 22:19:11,103 - snowflake.connector.vendored.urllib3.connectionpool - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1741640d0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com
+2025-08-27 22:19:12,262 - snowflake.snowpark.session - INFO - Snowpark Session information: 
+"version" : 1.36.0,
+"python.version" : 3.10.13,
+"python.connector.version" : 3.17.1,
+"python.connector.session.id" : 14521830076089006,
+"os.name" : Darwin
+
+2025-08-27 22:19:12,262 - src.config - INFO - Created Snowpark session with connection: sfseeurope-mstellwall-aws-us-west3
+2025-08-27 22:19:12,802 - src.config - INFO - Set session context to FSI_DEMOS.BANK_DEMO
+2025-08-27 22:19:12,896 - __main__ - INFO - 🚀 Starting complete SnowBank Intelligence Demo setup...
+2025-08-27 22:19:12,896 - __main__ - INFO - 📋 Setup Strategy: IF NOT EXISTS (database) + REPLACE (all objects)
+2025-08-27 22:19:12,896 - __main__ - INFO - 📋 Setting up database schema (IF NOT EXISTS)...
+2025-08-27 22:19:12,896 - __main__ - ERROR - ❌ Database schema setup failed: 'DatabaseManager' object has no attribute 'create_database_schema'
+2025-08-27 22:19:12,896 - __main__ - INFO - 📊 Generating structured data (REPLACE tables)...
+2025-08-27 22:19:12,896 - src.data_generators - INFO - Starting structured data generation...
+2025-08-27 22:19:13,201 - src.data_generators - INFO - Generating member banks...
+2025-08-27 22:19:14,518 - src.data_generators - INFO - Generated 5 member banks
+2025-08-27 22:19:15,602 - src.data_generators - INFO - Generating customers...
+2025-08-27 22:19:16,795 - src.data_generators - INFO - Adding 12 demo seed companies...
+2025-08-27 22:19:16,796 - src.data_generators - INFO - Generating 5000 random customers...
+2025-08-27 22:19:21,506 - src.data_generators - INFO - Generated 5012 customers
+2025-08-27 22:19:25,709 - src.data_generators - INFO - Generating loans...
+2025-08-27 22:19:31,486 - src.data_generators - INFO - Generating guaranteed loans for 12 demo companies...
+2025-08-27 22:19:31,487 - src.data_generators - INFO - Generating 24970 additional random loans...
+2025-08-27 22:19:38,801 - src.data_generators - INFO - Generated 25000 loans
+2025-08-27 22:19:43,913 - src.data_generators - INFO - Generating financials...
+2025-08-27 22:20:09,012 - src.data_generators - INFO - Generated 337184 financial records
+2025-08-27 22:20:25,883 - src.data_generators - INFO - Generating alliance performance...
+2025-08-27 22:20:27,462 - src.data_generators - INFO - Generated 15 performance records
+2025-08-27 22:20:28,182 - src.data_generators - INFO - Generating market data...
+2025-08-27 22:20:33,295 - src.data_generators - INFO - Generated 15862 market data records
+2025-08-27 22:20:42,855 - src.config - INFO - Initialized DEMO_CONFIG table with default values
+2025-08-27 22:20:42,856 - src.data_generators - INFO - Structured data generation completed
+2025-08-27 22:20:44,831 - __main__ - INFO - ✅ Structured data generation completed in 91.9 seconds
+2025-08-27 22:20:44,832 - __main__ - INFO - 📄 Generating documents (REPLACE tables)...
+2025-08-27 22:20:44,832 - src.document_generator - INFO - Starting document generation...
+2025-08-27 22:20:44,832 - src.document_generator - INFO - Generating document prompts...
+2025-08-27 22:20:46,346 - src.document_generator - INFO - Generated 35 document prompts
+2025-08-27 22:20:46,347 - src.document_generator - INFO - Generating documents using Cortex Complete with snowpark dataframe...
+2025-08-27 22:20:47,183 - src.document_generator - INFO - Processing 1 model classes: ['claude-4-sonnet']
+2025-08-27 22:20:47,183 - src.document_generator - INFO - Processing documents with model: claude-4-sonnet
+2025-08-27 22:20:47,188 - src.document_generator - INFO - Generated documents for model claude-4-sonnet
+2025-08-27 22:21:22,168 - src.document_generator - INFO - Generated 35 documents successfully using snowpark dataframe
+2025-08-27 22:21:22,169 - src.document_generator - INFO - Document generation completed
+2025-08-27 22:21:22,686 - __main__ - INFO - ✅ Document generation completed in 37.9 seconds
+2025-08-27 22:21:22,686 - __main__ - INFO - 🔍 Creating search services (CREATE OR REPLACE)...
+2025-08-27 22:21:22,686 - src.search_services - INFO - Creating Cortex Search services...
+2025-08-27 22:21:33,970 - src.search_services - INFO - Successfully created search service: INTERNAL_POLICY_SEARCH_SVC
+2025-08-27 22:21:33,971 - src.search_services - INFO - Created search service: INTERNAL_POLICY_SEARCH_SVC
+2025-08-27 22:21:44,462 - src.search_services - INFO - Successfully created search service: CLIENT_AND_MARKET_INTEL_SVC
+2025-08-27 22:21:44,462 - src.search_services - INFO - Created search service: CLIENT_AND_MARKET_INTEL_SVC
+2025-08-27 22:21:55,768 - src.search_services - INFO - Successfully created search service: REPORTING_AND_COMPLIANCE_SVC
+2025-08-27 22:21:55,768 - src.search_services - INFO - Created search service: REPORTING_AND_COMPLIANCE_SVC
+2025-08-27 22:21:55,768 - src.search_services - INFO - Pre-warming search services...
+2025-08-27 22:21:55,768 - src.search_services - INFO - Pre-warming service: INTERNAL_POLICY_SEARCH_SVC
+2025-08-27 22:21:57,462 - src.search_services - INFO - Pre-warming service: CLIENT_AND_MARKET_INTEL_SVC
+2025-08-27 22:22:00,375 - src.search_services - INFO - Pre-warming service: REPORTING_AND_COMPLIANCE_SVC
+2025-08-27 22:22:04,130 - src.search_services - INFO - All Cortex Search services created and pre-warmed
+2025-08-27 22:22:04,131 - src.search_services - INFO - Testing all search services...
+2025-08-27 22:22:04,514 - src.search_services - INFO - Search service INTERNAL_POLICY_SEARCH_SVC test successful
+2025-08-27 22:22:05,028 - src.search_services - INFO - Search service CLIENT_AND_MARKET_INTEL_SVC test successful
+2025-08-27 22:22:05,927 - src.search_services - INFO - Search service REPORTING_AND_COMPLIANCE_SVC test successful
+2025-08-27 22:22:05,927 - __main__ - INFO - ✅ Search services creation completed in 43.2 seconds
+2025-08-27 22:22:05,927 - __main__ - INFO - 🧠 Creating dual semantic model (CREATE OR REPLACE)...
+2025-08-27 22:22:07,597 - src.semantic_model - INFO - Created SNOWBANK_DEMO_SV banking semantic view for Cortex Analyst
+2025-08-27 22:22:07,598 - src.semantic_model - INFO - Creating market data semantic view...
+2025-08-27 22:22:08,395 - src.semantic_model - INFO - Created MARKET_PEER_ANALYSIS_SV semantic view for peer analysis
+2025-08-27 22:22:08,395 - src.semantic_model - INFO - Created both banking and market semantic views successfully
+2025-08-27 22:22:08,395 - src.semantic_model - INFO - Validating semantic view...
+2025-08-27 22:22:08,694 - src.semantic_model - INFO - SNOWBANK_DEMO_SV banking semantic view exists
+2025-08-27 22:22:08,970 - src.semantic_model - INFO - Banking semantic view has 84 dimensions and 102 metrics
+2025-08-27 22:22:08,970 - src.semantic_model - INFO - MARKET_PEER_ANALYSIS_SV market semantic view exists
+2025-08-27 22:22:09,200 - src.semantic_model - INFO - Market semantic view has 24 dimensions and 30 metrics
+2025-08-27 22:22:09,200 - __main__ - INFO - ✅ Semantic model creation completed in 3.3 seconds
+2025-08-27 22:22:09,200 - __main__ - INFO - ✅ Running comprehensive validation...
+2025-08-27 22:22:12,171 - __main__ - WARNING - ⚠️ Validation issues: ['search_services_working']
+2025-08-27 22:22:12,172 - __main__ - ERROR - ❌ Demo setup had failures
+2025-08-27 22:22:12,172 - snowflake.snowpark.session - INFO - Closing session: 14521830076089006
+2025-08-27 22:22:12,173 - snowflake.snowpark.session - INFO - Canceling all running queries
+2025-08-27 22:22:12,804 - snowflake.snowpark.session - INFO - Closed session: 14521830076089006
+2025-08-27 22:22:12,805 - snowflake.snowpark.session - INFO - Closed session: 14521830076089006
