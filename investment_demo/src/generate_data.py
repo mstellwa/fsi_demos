@@ -23,6 +23,7 @@ from structured_data_generator import StructuredDataGenerator
 from unstructured_data_generator import UnstructuredDataGenerator
 from data_validator import DataValidator
 from cortex_objects_creator import CortexObjectsCreator
+from warehouse_setup import WarehouseSetup
 
 # Configure logging
 logging.basicConfig(
@@ -41,13 +42,19 @@ class ThematicResearchDataGenerator:
         random.seed(RANDOM_SEED)
         np.random.seed(RANDOM_SEED)
         
+        self.warehouse_setup = WarehouseSetup(session)
         self.structured_gen = StructuredDataGenerator(session)
         self.unstructured_gen = UnstructuredDataGenerator(session)
         self.validator = DataValidator(session)
         self.cortex_creator = CortexObjectsCreator(session)
         
     def setup_database(self):
-        """Create database and schemas if they don't exist."""
+        """Create warehouses, database and schemas if they don't exist."""
+        
+        # Create warehouses first
+        logger.info("Setting up warehouses")
+        self.warehouse_setup.create_warehouses()
+        
         logger.info(f"Setting up database {DB_NAME}")
         
         # Create database
@@ -180,10 +187,8 @@ def get_session(connection_name: str) -> Session:
         # Build session using connection name from connections.toml
         session = Session.builder.config("connection_name", connection_name).create()
         
-        # Set warehouse
-        session.sql(f"USE WAREHOUSE {WAREHOUSE}").collect()
-        
-        # Test connection
+        # Don't set warehouse here - it will be created and set in setup_database()
+        # Just test the basic connection
         result = session.sql("SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE()").collect()
         logger.info(f"Connected as: {result[0][0]}, Role: {result[0][1]}, Warehouse: {result[0][2]}")
         

@@ -18,6 +18,10 @@ description: Rules for synthetic data generation with Snowpark and Cortex Comple
 ## Snowpark & Pandas
 - Use Snowpark DataFrames wherever possible.
 - If Pandas is required, load via `Session.write_pandas(df, table_name, quote_identifiers=False)` and ensure Snowflake-compliant identifiers.
+- CRITICAL: Never use Snowflake reserved keywords as column names (e.g., SOURCE, TABLE, COLUMN, etc.)
+  - Use NEWS_SOURCE instead of SOURCE for news data
+  - Use DATA_SOURCE instead of SOURCE for macroeconomic data
+  - Reference: https://docs.snowflake.com/en/sql-reference/reserved-keywords
 - All unstructured outputs are stored in a single VARCHAR column per row.
 - Use markdown formatting for sources with layout (consultant reports, memos, transcripts).
 
@@ -37,3 +41,20 @@ description: Rules for synthetic data generation with Snowpark and Cortex Comple
   - Other anchor companies: minimum 4 quarters each
   - Remaining companies: at least 2 quarters each
 - Internal memos: 10–12 (include analysis of Nordic Freight Systems)
+
+## Common Pitfalls to Avoid
+
+### Reserved Keywords
+- NEVER use SOURCE as column name - use NEWS_SOURCE or DATA_SOURCE
+- Check all column names against Snowflake reserved keywords list
+- Other problematic keywords: TABLE, COLUMN, VIEW, SCHEMA, DATABASE
+
+### Cortex Search Creation
+- Always DROP existing service before CREATE (no CREATE OR REPLACE)
+- Column names in ON/ATTRIBUTES must match source table exactly (no aliases)
+- Test with SNOWFLAKE.CORTEX.SEARCH_PREVIEW, not SEARCH_PREVIEW
+
+### Warehouse Issues
+- Create TRD_COMPUTE_WH and TRD_CORTEX_SEARCH_WH before any operations
+- Grant USAGE on warehouses to current role
+- Don't set warehouse in initial session connection

@@ -6,7 +6,8 @@ Configuration settings for the Thematic Research Demo
 DB_NAME = "THEMES_RESEARCH_DEMO"
 RAW_SCHEMA = "RAW_DATA"
 ANALYTICS_SCHEMA = "ANALYTICS"
-WAREHOUSE = "COMPUTE_WH"
+WAREHOUSE = "TRD_COMPUTE_WH"
+CORTEX_SEARCH_WAREHOUSE = "TRD_CORTEX_SEARCH_WH"
 
 # Default connection name
 DEFAULT_CONNECTION = "sfseeurope-mstellwall-aws-us-west3"

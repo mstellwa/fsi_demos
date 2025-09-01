@@ -4,7 +4,7 @@ Creator for Cortex Intelligence objects (Search services and Semantic Views).
 
 import logging
 from snowflake.snowpark import Session
-from config import DB_NAME, RAW_SCHEMA, ANALYTICS_SCHEMA, WAREHOUSE
+from config import DB_NAME, RAW_SCHEMA, ANALYTICS_SCHEMA, WAREHOUSE, CORTEX_SEARCH_WAREHOUSE
 
 logger = logging.getLogger(__name__)
 
@@ -24,62 +24,58 @@ class CortexObjectsCreator:
         
         # 1. Factset News Search Service
         logger.info("Creating FACTSET_NEWS_SEARCH service...")
+        
+        # Always drop existing service first to avoid schema conflicts
+        try:
+            self.session.sql(f"DROP CORTEX SEARCH SERVICE IF EXISTS {DB_NAME}.{ANALYTICS_SCHEMA}.FACTSET_NEWS_SEARCH").collect()
+            logger.info("Dropped existing FACTSET_NEWS_SEARCH service if it existed")
+        except Exception as e:
+            logger.debug(f"No existing service to drop: {e}")
+        
+        # Create the service with explicit column selection
         try:
             self.session.sql(f"""
-                CREATE OR REPLACE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.FACTSET_NEWS_SEARCH
+                CREATE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.FACTSET_NEWS_SEARCH
                     ON ARTICLE_BODY
-                    ATTRIBUTES HEADLINE, PUBLISH_TIMESTAMP, SOURCE, COMPANY_ID, LANG
-                    WAREHOUSE = {WAREHOUSE}
+                    ATTRIBUTES HEADLINE, PUBLISH_TIMESTAMP, NEWS_SOURCE, COMPANY_ID, LANG
+                    WAREHOUSE = {CORTEX_SEARCH_WAREHOUSE}
                     TARGET_LAG = '10 minutes'
                     AS 
                     SELECT 
                         ARTICLE_ID,
-                        HEADLINE AS TITLE,
-                        ARTICLE_BODY AS CONTENT,
+                        HEADLINE,
+                        ARTICLE_BODY,
                         PUBLISH_TIMESTAMP,
-                        SOURCE,
+                        NEWS_SOURCE,
                         COMPANY_ID,
                         LANG
                     FROM {DB_NAME}.{RAW_SCHEMA}.FACTSET_NEWS_FEED
             """).collect()
+            logger.info("✅ FACTSET_NEWS_SEARCH service created successfully")
         except Exception as e:
-            logger.warning(f"Failed to create FACTSET_NEWS_SEARCH: {e}")
-            # Try alternative approach - drop first if exists
-            try:
-                self.session.sql(f"DROP CORTEX SEARCH SERVICE IF EXISTS {DB_NAME}.{ANALYTICS_SCHEMA}.FACTSET_NEWS_SEARCH").collect()
-                self.session.sql(f"""
-                    CREATE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.FACTSET_NEWS_SEARCH
-                        ON ARTICLE_BODY
-                        WAREHOUSE = {WAREHOUSE}
-                        TARGET_LAG = '10 minutes'
-                        AS 
-                        SELECT 
-                            ARTICLE_ID,
-                            HEADLINE,
-                            ARTICLE_BODY,
-                            PUBLISH_TIMESTAMP,
-                            SOURCE,
-                            COMPANY_ID,
-                            LANG
-                        FROM {DB_NAME}.{RAW_SCHEMA}.FACTSET_NEWS_FEED
-                """).collect()
-            except Exception as e2:
-                logger.error(f"Failed to create FACTSET_NEWS_SEARCH even after drop: {e2}")
-                raise
+            logger.error(f"Failed to create FACTSET_NEWS_SEARCH: {e}")
+            raise
         
         # 2. Guidepoint Expert Transcripts Search Service
         logger.info("Creating GUIDEPOINT_TRANSCRIPTS_SEARCH service...")
+        
+        # Drop existing service first
+        try:
+            self.session.sql(f"DROP CORTEX SEARCH SERVICE IF EXISTS {DB_NAME}.{ANALYTICS_SCHEMA}.GUIDEPOINT_TRANSCRIPTS_SEARCH").collect()
+        except:
+            pass
+        
         self.session.sql(f"""
-            CREATE OR REPLACE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.GUIDEPOINT_TRANSCRIPTS_SEARCH
+            CREATE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.GUIDEPOINT_TRANSCRIPTS_SEARCH
                 ON TRANSCRIPT_TEXT
                 ATTRIBUTES TITLE, INTERVIEW_DATE, EXPERT_PROFILE, COMPANY_ID
-                WAREHOUSE = {WAREHOUSE}
+                WAREHOUSE = {CORTEX_SEARCH_WAREHOUSE}
                 TARGET_LAG = '10 minutes'
                 AS 
                 SELECT 
                     TRANSCRIPT_ID,
                     TITLE,
-                    TRANSCRIPT_TEXT AS CONTENT,
+                    TRANSCRIPT_TEXT,
                     INTERVIEW_DATE,
                     EXPERT_PROFILE,
                     COMPANY_ID
@@ -88,36 +84,49 @@ class CortexObjectsCreator:
         
         # 3. McBainCG Consultant Reports Search Service
         logger.info("Creating MCBAINCG_REPORTS_SEARCH service...")
+        
+        # Drop existing service first
+        try:
+            self.session.sql(f"DROP CORTEX SEARCH SERVICE IF EXISTS {DB_NAME}.{ANALYTICS_SCHEMA}.MCBAINCG_REPORTS_SEARCH").collect()
+        except:
+            pass
+        
         self.session.sql(f"""
-            CREATE OR REPLACE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.MCBAINCG_REPORTS_SEARCH
+            CREATE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.MCBAINCG_REPORTS_SEARCH
                 ON REPORT_BODY
                 ATTRIBUTES TITLE, PUBLISH_DATE, EXECUTIVE_SUMMARY
-                WAREHOUSE = {WAREHOUSE}
+                WAREHOUSE = {CORTEX_SEARCH_WAREHOUSE}
                 TARGET_LAG = '10 minutes'
                 AS 
                 SELECT 
                     REPORT_ID,
                     TITLE,
-                    REPORT_BODY AS CONTENT,
+                    REPORT_BODY,
                     PUBLISH_DATE,
-                    EXECUTIVE_SUMMARY,
-                    NULL AS COMPANY_ID
+                    EXECUTIVE_SUMMARY
                 FROM {DB_NAME}.{RAW_SCHEMA}.MCBAINCG_CONSULTANT_REPORTS
         """).collect()
         
         # 4. Quartr Earnings Calls Search Service
         logger.info("Creating QUARTR_EARNINGS_CALLS_SEARCH service...")
+        
+        # Drop existing service first
+        try:
+            self.session.sql(f"DROP CORTEX SEARCH SERVICE IF EXISTS {DB_NAME}.{ANALYTICS_SCHEMA}.QUARTR_EARNINGS_CALLS_SEARCH").collect()
+        except:
+            pass
+        
         self.session.sql(f"""
-            CREATE OR REPLACE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.QUARTR_EARNINGS_CALLS_SEARCH
+            CREATE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.QUARTR_EARNINGS_CALLS_SEARCH
                 ON TRANSCRIPT_JSON
                 ATTRIBUTES TITLE, COMPANY_ID, CALL_TIMESTAMP, REPORTING_PERIOD
-                WAREHOUSE = {WAREHOUSE}
+                WAREHOUSE = {CORTEX_SEARCH_WAREHOUSE}
                 TARGET_LAG = '10 minutes'
                 AS 
                 SELECT 
                     CALL_ID,
                     TITLE,
-                    TRANSCRIPT_JSON AS CONTENT,
+                    TRANSCRIPT_JSON,
                     COMPANY_ID,
                     CALL_TIMESTAMP,
                     REPORTING_PERIOD
@@ -126,17 +135,24 @@ class CortexObjectsCreator:
         
         # 5. Internal Memos Search Service
         logger.info("Creating INTERNAL_MEMOS_SEARCH service...")
+        
+        # Drop existing service first
+        try:
+            self.session.sql(f"DROP CORTEX SEARCH SERVICE IF EXISTS {DB_NAME}.{ANALYTICS_SCHEMA}.INTERNAL_MEMOS_SEARCH").collect()
+        except:
+            pass
+        
         self.session.sql(f"""
-            CREATE OR REPLACE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.INTERNAL_MEMOS_SEARCH
+            CREATE CORTEX SEARCH SERVICE {DB_NAME}.{ANALYTICS_SCHEMA}.INTERNAL_MEMOS_SEARCH
                 ON MEMO_BODY
                 ATTRIBUTES SUBJECT, CREATION_DATE, AUTHOR, SUBJECT_COMPANIES
-                WAREHOUSE = {WAREHOUSE}
+                WAREHOUSE = {CORTEX_SEARCH_WAREHOUSE}
                 TARGET_LAG = '10 minutes'
                 AS 
                 SELECT 
                     MEMO_ID,
-                    SUBJECT AS TITLE,
-                    MEMO_BODY AS CONTENT,
+                    SUBJECT,
+                    MEMO_BODY,
                     CREATION_DATE,
                     AUTHOR,
                     SUBJECT_COMPANIES
@@ -296,22 +312,29 @@ class CortexObjectsCreator:
         
         tests_passed = True
         
-        # Test each service
+        # Test each service with appropriate column names
         test_queries = [
-            ("FACTSET_NEWS_SEARCH", "inflation logistics"),
-            ("GUIDEPOINT_TRANSCRIPTS_SEARCH", "pricing strategies"),
-            ("MCBAINCG_REPORTS_SEARCH", "Nordic market"),
-            ("QUARTR_EARNINGS_CALLS_SEARCH", "Nordic Freight Systems"),
-            ("INTERNAL_MEMOS_SEARCH", "investment thesis")
+            ("FACTSET_NEWS_SEARCH", "inflation logistics", ["ARTICLE_BODY", "HEADLINE"]),
+            ("GUIDEPOINT_TRANSCRIPTS_SEARCH", "pricing strategies", ["TRANSCRIPT_TEXT", "TITLE"]),
+            ("MCBAINCG_REPORTS_SEARCH", "Nordic market", ["REPORT_BODY", "TITLE"]),
+            ("QUARTR_EARNINGS_CALLS_SEARCH", "Nordic Freight Systems", ["TRANSCRIPT_JSON", "TITLE"]),
+            ("INTERNAL_MEMOS_SEARCH", "investment thesis", ["MEMO_BODY", "SUBJECT"])
         ]
         
-        for service_name, query in test_queries:
+        for service_name, query, columns in test_queries:
             try:
+                # Build the columns list for the query
+                columns_str = ', '.join([f'"{col}"' for col in columns])
+                
                 result = self.session.sql(f"""
-                    SELECT SEARCH_PREVIEW(
-                        '{query}',
-                        {{'columns': ['TITLE'], 'limit': 1}}
-                    ) OVER {service_name}
+                    SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+                        '{DB_NAME}.{ANALYTICS_SCHEMA}.{service_name}',
+                        '{{
+                            "query": "{query}",
+                            "columns": [{columns_str}],
+                            "limit": 1
+                        }}'
+                    )
                 """).collect()
                 
                 if result and len(result) > 0:

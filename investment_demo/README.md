@@ -27,51 +27,143 @@ investment_demo/
 ├── src/                            # Core implementation modules
 │   ├── config.py                   # Configuration settings
 │   ├── generate_data.py            # Data generation orchestrator
+│   ├── warehouse_setup.py          # Warehouse creation and management
 │   ├── structured_data_generator.py # Companies, financials, macro data
 │   ├── unstructured_data_generator.py # Content generation via Cortex Complete
 │   ├── data_validator.py           # Validation checks
 │   └── cortex_objects_creator.py   # Creates Cortex Search services & Semantic Views
 ├── docs/
-│   └── agent_setup_instructions.md # Detailed agent configuration
-└── demo_research/                  # Design documentation
-    ├── Snowflake AI Research Tool Demo.md # Original design doc
-    └── gpt_review.md               # Design review and refinements
+│   ├── agent_setup_instructions.md # Detailed agent configuration
+│   └── demo_script.md              # Complete demo execution script
+├── demo_research/                  # Design documentation
+│   ├── Snowflake AI Research Tool Demo.md # Original design doc
+│   └── gpt_review.md               # Design review and refinements
+└── .cursor/rules/                  # Cursor AI assistant rules
+    ├── agent-and-demo-flow.mdc     # Agent behavior rules
+    ├── cortex-search-and-semantic-view.mdc # Search service specs
+    ├── data-generation.mdc         # Data generation rules
+    ├── demo-prompts.mdc            # Demo script reference
+    ├── models-and-refresh.mdc      # Model configuration
+    ├── naming-and-branding.mdc     # Naming conventions
+    └── overview-and-setup.mdc      # Project overview
 ```
 
 ## Prerequisites
 
-1. **Snowflake Account** with:
-   - Cortex Complete enabled (llama3.1-8b model)
-   - Cortex Search enabled
-   - Cortex Analyst enabled
-   - Snowflake Intelligence access
-   - Claude 4.0 model (for Agent)
+### 1. Snowflake Account Requirements
 
-2. **Local Environment**:
-   - Python 3.8+
-   - Snowflake connection configured in `~/.snowflake/connections.toml`
+**Features Required**:
+- Cortex Complete enabled (llama3.1-8b model)
+- Cortex Search enabled
+- Cortex Analyst enabled
+- Snowflake Intelligence access
+- Claude 4.0 model (for Agent configuration)
+
+**Role Permissions Required**:
+The Snowflake role you use must have the following privileges:
+
+```sql
+-- Database operations
+CREATE DATABASE
+USE DATABASE
+
+-- Schema operations  
+CREATE SCHEMA
+USE SCHEMA
+
+-- Warehouse operations
+CREATE WAREHOUSE
+USE WAREHOUSE
+OPERATE WAREHOUSE
+
+-- Table operations
+CREATE TABLE
+SELECT, INSERT, UPDATE, DELETE on tables
+
+-- Cortex operations
+CREATE CORTEX SEARCH SERVICE
+CREATE SEMANTIC VIEW
+
+-- Function access
+USAGE on FUNCTION SNOWFLAKE.CORTEX.COMPLETE
+```
+
+**Recommended Setup**:
+```sql
+-- Grant necessary privileges to your role (replace YOUR_ROLE with actual role name)
+GRANT CREATE DATABASE ON ACCOUNT TO ROLE YOUR_ROLE;
+GRANT CREATE WAREHOUSE ON ACCOUNT TO ROLE YOUR_ROLE;
+```
+
+### 2. Local Environment
+
+**Python Requirements**:
+- Python 3.8 or higher
+- pip package manager
+
+**Snowflake Connection**:
+Configure your connection in `~/.snowflake/connections.toml`:
+
+```toml
+[your_connection_name]
+account = "your_account_identifier"
+user = "your_username"
+password = "your_password"  # Or use authenticator for SSO
+role = "YOUR_ROLE"  # Role with required permissions
+warehouse = "COMPUTE_WH"  # Will be created if doesn't exist
+database = "THEMES_RESEARCH_DEMO"  # Will be created by setup
+schema = "RAW_DATA"  # Will be created by setup
+```
+
+### 3. Network Requirements
+
+- Stable internet connection (setup takes 10-15 minutes)
+- Access to Snowflake endpoints (no firewall blocking)
+- If using corporate network, ensure proxy settings are configured
 
 ## Quick Setup (Recommended)
 
-### One-Command Setup
+### Step 1: Install Dependencies
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Clone the repository (if not already done)
+git clone <repository_url>
+cd investment_demo
 
-# Run complete setup (data + SQL objects)
-python setup_demo.py
+# Install Python dependencies
+pip install -r requirements.txt
 ```
 
-This single command will:
-1. Connect to Snowflake (using default connection: `sfseeurope-mstellwall-aws-us-west3`)
-2. Create database and schemas
-3. Generate all synthetic data using Cortex Complete
-4. Create Cortex Search services
-5. Create Semantic View
-6. Validate everything is working
+### Step 2: Run Complete Setup
 
-**Expected runtime: 10-15 minutes**
+```bash
+# Run with default connection (edit config.py to change default)
+python setup_demo.py
+
+# Or specify your connection name
+python setup_demo.py --connection your_connection_name
+```
+
+**What the setup script does**:
+1. **Creates warehouses**: 
+   - `TRD_COMPUTE_WH` for general compute operations
+   - `TRD_CORTEX_SEARCH_WH` for Cortex Search services
+2. **Creates database**: `THEMES_RESEARCH_DEMO` with schemas:
+   - `RAW_DATA` for source tables
+   - `ANALYTICS` for Cortex objects
+3. **Generates synthetic data** using Cortex Complete:
+   - 12 companies (including Nordic Freight Systems)
+   - 18 quarters of financial data
+   - 50 news articles (10% in Swedish)
+   - 12 expert transcripts
+   - 8 consultant reports
+   - 32 earnings calls
+   - 12 internal memos
+4. **Creates Cortex Search services** (5 total, one per source)
+5. **Creates Semantic View** for quantitative analysis
+6. **Validates** all components are working
+
+**Expected runtime**: 10-15 minutes (depending on Cortex Complete speed)
 
 ### Alternative Setup Options
 
@@ -161,21 +253,70 @@ The demo script includes:
 
 ## Troubleshooting
 
-### If data generation fails:
-- Check Snowflake connection: `SELECT CURRENT_USER()`
-- Verify Cortex Complete is enabled: `SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b', 'test')`
-- Check warehouse is running: `SHOW WAREHOUSES`
+### Common Setup Issues
 
-### If searches return no results:
-- Verify services are created: `SHOW CORTEX SEARCH SERVICES IN SCHEMA ANALYTICS`
-- Wait for indexing (up to 10 minutes after creation)
-- Test with `SEARCH_PREVIEW` function
+**"Warehouse COMPUTE_WH is missing" error**:
+- The setup script now creates `TRD_COMPUTE_WH` and `TRD_CORTEX_SEARCH_WH` automatically
+- If you see this error, ensure your role has `CREATE WAREHOUSE` privilege
+- Check existing warehouses: `SHOW WAREHOUSES`
 
-### If Agent doesn't work as expected:
-- Run validation: `python src/generate_data.py --validate-only`
-- Check tool descriptions match exactly
-- Verify Nordic Freight Systems exists in data
-- Review planning instructions for clarity
+**"Invalid identifier 'SOURCE'" error**:
+- This is a Snowflake reserved keyword issue (now fixed in the code)
+- The code uses `NEWS_SOURCE` and `DATA_SOURCE` instead
+- If you see this, drop and recreate the affected table
+
+**"Quoted identifiers" error in Cortex Search**:
+- Drop the existing service first: `DROP CORTEX SEARCH SERVICE IF EXISTS service_name`
+- The setup now always drops services before recreating them
+
+**Network timeout errors**:
+- The setup is resilient to network issues
+- Simply rerun `python setup_demo.py` - it will resume where it left off
+- For unstable connections, run in steps:
+  ```bash
+  python setup_demo.py --skip-objects  # Data only
+  python setup_demo.py --validate-only # Then validate
+  ```
+
+### Data Generation Issues
+
+**Cortex Complete not working**:
+```sql
+-- Test Cortex Complete access
+SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b', 'test');
+
+-- If error, check model availability
+SHOW FUNCTIONS LIKE 'COMPLETE' IN SCHEMA SNOWFLAKE.CORTEX;
+```
+
+**Missing Nordic Freight Systems**:
+- This company is mandatory and created deterministically
+- If missing, check `RANDOM_SEED = 42` in `src/config.py`
+- Regenerate data: `python setup_demo.py`
+
+### Cortex Search Issues
+
+**Services not returning results**:
+```sql
+-- Check services exist
+SHOW CORTEX SEARCH SERVICES IN SCHEMA ANALYTICS;
+
+-- Wait for indexing (up to 10 minutes)
+-- Force refresh if needed
+ALTER CORTEX SEARCH SERVICE service_name REFRESH;
+```
+
+### Agent Configuration Issues
+
+**Agent not finding the right tools**:
+- Tool names must match exactly (use underscores, not hyphens)
+- Check `docs/agent_setup_instructions.md` for exact tool configurations
+- Verify all 6 tools are configured (1 Analyst + 5 Search)
+
+**Agent not citing sources properly**:
+- Every Cortex Search service must have a TITLE column
+- Citations format: `[Title] (SourceType, Date)`
+- Check that all services have proper TITLE mappings
 
 ## Customization Options
 

@@ -4,15 +4,43 @@ description: Rules for Cortex Search services and the Semantic View used by Cort
 ---
 # Cortex Search & Semantic View Rules
 
+## Cortex Search Service Creation Patterns (CRITICAL)
+
+### Key Learnings from Implementation
+1. **ALWAYS DROP BEFORE CREATE**: Never use `CREATE OR REPLACE` for Cortex Search services
+   - Drop existing service first: `DROP CORTEX SEARCH SERVICE IF EXISTS service_name`
+   - This avoids schema conflicts and quoted identifier issues
+
+2. **Column Name Consistency**: The ON clause and ATTRIBUTES must reference actual column names from source table
+   - ❌ WRONG: `ON ARTICLE_BODY ... SELECT ARTICLE_BODY AS CONTENT`
+   - ✅ RIGHT: `ON ARTICLE_BODY ... SELECT ARTICLE_BODY`
+   - Do NOT use aliases when columns are referenced in ON/ATTRIBUTES
+
+3. **Use Dedicated Warehouse**: Create `TRD_CORTEX_SEARCH_WH` specifically for search services
+   - Ensures proper resource allocation
+   - Must be created before service creation
+
+4. **Testing Pattern**: Use correct SNOWFLAKE.CORTEX.SEARCH_PREVIEW syntax
+   ```sql
+   SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+       'DATABASE.SCHEMA.SERVICE_NAME',
+       '{
+           "query": "search terms",
+           "columns": ["COLUMN1", "COLUMN2"],
+           "limit": 1
+       }'
+   );
+   ```
+
 ## Cortex Search Services (one per source type)
-- Refresh cadence: every 10 minutes.
+- Refresh cadence: every 10 minutes via `TARGET_LAG = '10 minutes'`
 - Each service MUST expose (REQUIRED for Agent to function):
   - **ID column** (REQUIRED): unique row identifier (e.g., `ARTICLE_ID`, `TRANSCRIPT_ID`, `REPORT_ID`, `CALL_ID`, `MEMO_ID`). This enables the Agent to reference specific documents.
   - **TITLE column** (REQUIRED): human-readable title for citation (e.g., `HEADLINE`, `TITLE`, or synthesized title). This is what appears in citations to users.
   - **CONTENT column** (REQUIRED): the field searched semantically (e.g., `ARTICLE_BODY`, `TRANSCRIPT_TEXT`, `REPORT_BODY`, or transcript text in VARCHAR).
   - **ATTRIBUTES** for filtering/citations: timestamp/date, source/author, `COMPANY_ID` (nullable), `LANG` where applicable.
 - Source mappings:
-  - FACTSET_NEWS_FEED: ID=`ARTICLE_ID`, TITLE=`HEADLINE`, CONTENT=`ARTICLE_BODY`, ATTRIBUTES=`PUBLISH_TIMESTAMP`, `SOURCE`, `COMPANY_ID?`, `LANG`.
+  - FACTSET_NEWS_FEED: ID=`ARTICLE_ID`, TITLE=`HEADLINE`, CONTENT=`ARTICLE_BODY`, ATTRIBUTES=`PUBLISH_TIMESTAMP`, `NEWS_SOURCE`, `COMPANY_ID?`, `LANG`.
   - GUIDEPOINT_EXPERT_TRANSCRIPTS: ID=`TRANSCRIPT_ID`, TITLE=`Expert Interview — <profile> — <date>` (must be generated), CONTENT=`TRANSCRIPT_TEXT` (markdown Q&A), ATTRIBUTES=`INTERVIEW_DATE`, `EXPERT_PROFILE`, `COMPANY_ID?`.
   - MCBAINCG_CONSULTANT_REPORTS: ID=`REPORT_ID`, TITLE=`TITLE`, CONTENT=`REPORT_BODY` (markdown), ATTRIBUTES=`PUBLISH_DATE`, `EXECUTIVE_SUMMARY`, `COMPANY_ID?`.
   - QUARTR_EARNINGS_CALLS: ID=`CALL_ID`, TITLE=`Earnings Call — <Company> — <Quarter>`, CONTENT=transcript text (markdown) stored in VARCHAR, ATTRIBUTES=`COMPANY_ID`, `CALL_TIMESTAMP`.

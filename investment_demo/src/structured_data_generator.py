@@ -124,7 +124,7 @@ class StructuredDataGenerator:
                         "VALUE": value,
                         "UNIT": unit,
                         "REGION": region,
-                        "SOURCE": "Nordic Statistical Bureau"
+                        "DATA_SOURCE": "Nordic Statistical Bureau"
                     })
                     indicator_id += 1
         

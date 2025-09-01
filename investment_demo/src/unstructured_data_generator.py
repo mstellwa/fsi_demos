@@ -102,7 +102,7 @@ class UnstructuredDataGenerator:
                 "PROMPT_TEXT": prompt,
                 "RANDOM_SEED": RANDOM_SEED + i,
                 "MODEL_NAME": DEFAULT_LLM_MODEL,
-                "SOURCE": source,
+                "NEWS_SOURCE": source,
                 "LANG": lang
             })
         
@@ -482,7 +482,7 @@ class UnstructuredDataGenerator:
                 "HEADLINE": headline,
                 "ARTICLE_BODY": body,
                 "PUBLISH_TIMESTAMP": datetime.datetime.now() - timedelta(days=random.randint(1, 90)),
-                "SOURCE": row['SOURCE'],
+                "NEWS_SOURCE": row['NEWS_SOURCE'],
                 "COMPANY_ID": row['COMPANY_ID'] if pd.notna(row['COMPANY_ID']) else None,
                 "LANG": row['LANG']
             })
