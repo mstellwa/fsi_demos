@@ -178,7 +178,8 @@ def main():
             
         # Validation
         if not args.skip_validation:
-            validate_setup(session)
+            from utils.validation import validate_all_components
+            validate_all_components(session)
             
         print("\n🎉 Setup completed successfully!")
         print("\n📋 Next steps:")

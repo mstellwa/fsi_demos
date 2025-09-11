@@ -260,17 +260,20 @@ def validate_earnings_scenario(session: Session) -> None:
     """Validate earnings analysis scenario has required data"""
     
     try:
-        # Check for earnings data
-        earnings_sql = """
-        SELECT COUNT(*) as cnt FROM ANALYTICS.EARNINGS_ANALYSIS_VIEW
-        WHERE company_ticker = 'NFLX' AND quarter = '2024-Q3'
+        # Test basic functionality of semantic view
+        test_sql = """
+        SELECT * FROM SEMANTIC_VIEW(
+            ANALYTICS.EARNINGS_ANALYSIS_VIEW
+            METRICS TOTAL_ACTUAL
+            DIMENSIONS TICKER, FISCAL_QUARTER
+        ) LIMIT 3
         """
-        result = session.sql(earnings_sql).collect()
+        result = session.sql(test_sql).collect()
         
-        if result and result[0]['CNT'] > 0:
-            print("     ✅ Earnings Analysis scenario: Data ready")
+        if result and len(result) > 0:
+            print("     ✅ Earnings Analysis scenario: EARNINGS_ANALYSIS_VIEW working")
         else:
-            print("     ⚠️  Earnings Analysis scenario: Missing Netflix Q3 data")
+            print("     ⚠️  Earnings Analysis scenario: EARNINGS_ANALYSIS_VIEW not returning data")
             
         # Check for transcript data
         transcript_sql = """
@@ -298,7 +301,7 @@ def validate_thematic_scenario(session: Session) -> None:
         SELECT * FROM SEMANTIC_VIEW(
             ANALYTICS.THEMATIC_RESEARCH_VIEW
             METRICS AVG_PRICE
-            DIMENSIONS COMPANY_TICKER
+            DIMENSIONS TICKER
         ) LIMIT 3
         """
         result = session.sql(thematic_sql).collect()

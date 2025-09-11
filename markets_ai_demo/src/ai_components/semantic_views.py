@@ -84,13 +84,13 @@ CREATE OR REPLACE SEMANTIC VIEW ANALYTICS.EARNINGS_ANALYSIS_VIEW
 		ESTIMATES_TO_COMPANIES AS ESTIMATES(TICKER) REFERENCES COMPANIES(TICKER)
 	)
 	DIMENSIONS (
-		COMPANIES.COMPANY_TICKER AS TICKER WITH SYNONYMS=('symbol','stock_ticker','ticker_symbol') COMMENT='Company stock ticker symbol',
+		COMPANIES.TICKER AS TICKER WITH SYNONYMS=('symbol','stock_ticker','ticker_symbol') COMMENT='Company stock ticker symbol',
 		COMPANIES.COMPANY_NAME AS COMPANY_NAME WITH SYNONYMS=('company','firm_name','corporation') COMMENT='Full company name',
-		COMPANIES.COMPANY_SECTOR AS SECTOR WITH SYNONYMS=('industry_sector','business_sector') COMMENT='Business sector classification',
-		COMPANIES.COMPANY_INDUSTRY AS INDUSTRY WITH SYNONYMS=('industry_group','business_line') COMMENT='Industry classification',
-		ACTUALS.REPORTING_QUARTER AS FISCAL_QUARTER WITH SYNONYMS=('reporting_period','fiscal_period','period') COMMENT='Fiscal quarter (e.g., 2024-Q1)',
-		ACTUALS.FINANCIAL_METRIC AS METRIC_NAME WITH SYNONYMS=('financial_metric','kpi','measure') COMMENT='Financial metric name (Revenue, EPS, Net Income)',
-		ESTIMATES.DATA_PROVIDER AS PROVIDER WITH SYNONYMS=('data_provider','research_provider','source') COMMENT='Source of the estimate (FactSet, Bloomberg, etc.)'
+		COMPANIES.SECTOR AS SECTOR WITH SYNONYMS=('industry_sector','business_sector') COMMENT='Business sector classification',
+		COMPANIES.INDUSTRY AS INDUSTRY WITH SYNONYMS=('industry_group','business_line') COMMENT='Industry classification',
+		ACTUALS.FISCAL_QUARTER AS FISCAL_QUARTER WITH SYNONYMS=('reporting_period','fiscal_period','period') COMMENT='Fiscal quarter (e.g., 2024-Q1)',
+		ACTUALS.METRIC_NAME AS METRIC_NAME WITH SYNONYMS=('financial_metric','kpi','measure') COMMENT='Financial metric name (Revenue, EPS, Net Income)',
+		ESTIMATES.PROVIDER AS PROVIDER WITH SYNONYMS=('data_provider','research_provider','source') COMMENT='Source of the estimate (FactSet, Bloomberg, etc.)'
 	)
 	METRICS (
 		ACTUALS.TOTAL_ACTUAL AS SUM(ACTUAL_VALUE) WITH SYNONYMS=('total_actual','sum_actual','actual_total') COMMENT='Sum of actual reported financial results',
@@ -141,12 +141,12 @@ CREATE OR REPLACE SEMANTIC VIEW ANALYTICS.THEMATIC_RESEARCH_VIEW
 		NEWS_TO_COMPANIES AS NEWS(AFFECTED_TICKER) REFERENCES COMPANIES(TICKER)
 	)
 	DIMENSIONS (
-		COMPANIES.COMPANY_TICKER AS TICKER WITH SYNONYMS=('symbol','stock_ticker','ticker_symbol') COMMENT='Company stock ticker symbol',
+		COMPANIES.TICKER AS TICKER WITH SYNONYMS=('symbol','stock_ticker','ticker_symbol') COMMENT='Company stock ticker symbol',
 		COMPANIES.COMPANY_NAME AS COMPANY_NAME WITH SYNONYMS=('company','firm_name','corporation') COMMENT='Company name',
-		COMPANIES.COMPANY_SECTOR AS SECTOR WITH SYNONYMS=('industry_sector','business_sector') COMMENT='Business sector classification',
-		COMPANIES.COMPANY_INDUSTRY AS INDUSTRY WITH SYNONYMS=('industry_group','business_line') COMMENT='Industry classification',
+		COMPANIES.SECTOR AS SECTOR WITH SYNONYMS=('industry_sector','business_sector') COMMENT='Business sector classification',
+		COMPANIES.INDUSTRY AS INDUSTRY WITH SYNONYMS=('industry_group','business_line') COMMENT='Industry classification',
 		REPORTS.REPORT_TYPE AS REPORT_TYPE WITH SYNONYMS=('analysis_type','research_type') COMMENT='Type of research report',
-		REPORTS.THEMES AS THEMATIC_TAGS WITH SYNONYMS=('thematic_tags','investment_themes','topics') COMMENT='Thematic investment tags and topics',
+		REPORTS.THEMATIC_TAGS AS THEMATIC_TAGS WITH SYNONYMS=('thematic_tags','investment_themes','topics') COMMENT='Thematic investment tags and topics',
 		REPORTS.AUTHOR AS AUTHOR WITH SYNONYMS=('analyst','research_author','writer') COMMENT='Report author name',
 		REPORTS.PUBLISHED_DATE AS PUBLISHED_DATE WITH SYNONYMS=('publication_date','report_date') COMMENT='Report publication date',
 		PRICES.PRICE_DATE AS PRICE_DATE WITH SYNONYMS=('trade_date','market_date','date') COMMENT='Stock price date',
