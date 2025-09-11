@@ -1,0 +1,6 @@
+# Requirements for Frost Markets Intelligence Demo
+snowflake-snowpark-python>=1.21.0
+snowflake-ml-python>=1.6.0
+pandas>=2.0.0
+numpy>=1.24.0
+faker>=25.0.0

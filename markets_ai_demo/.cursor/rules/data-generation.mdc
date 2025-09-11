@@ -1,0 +1,36 @@
+---
+description: Guidelines for synthetic data generation ensuring realistic correlations
+---
+
+# Data Generation Framework
+
+## Master Event Log Strategy
+The MASTER_EVENT_LOG table drives all data generation to ensure realistic correlations:
+- Create 5-10 major market events first
+- All subsequent data (prices, news, filings) must reference these events
+- Events should affect multiple companies to show cross-sector impact
+
+## Data Correlation Requirements
+- Stock prices must show volatility on event dates
+- News articles must be generated based on events in MASTER_EVENT_LOG
+- SEC filings must reference events in MD&A sections
+- Earnings transcripts must include analyst questions about events
+
+## Unstructured Data Generation Process
+1. Generate dynamic prompts using Python f-strings with structured data context
+2. Store prompts in temporary Snowflake table
+3. Create Snowpark DataFrame from prompt table
+4. Use with_column() to add cortex.complete() generated content
+5. Save results to permanent Snowflake table
+
+## Data Volume Guidelines
+- **Companies**: 10-15 real tickers (AAPL, MSFT, GOOGL, etc.)
+- **Clients**: 20-25 fictional institutional clients
+- **History**: 1 year of daily data sufficient for demo scenarios
+- **Events**: 5-10 market-moving events with clear impact patterns
+
+## Quality Assurance
+- Every agent question in scenarios must have supporting data
+- Cross-reference event dates across all generated tables
+- Ensure sentiment scores align with event types (positive/negative)
+- Validate that geographic revenue exposure data supports risk scenarios
