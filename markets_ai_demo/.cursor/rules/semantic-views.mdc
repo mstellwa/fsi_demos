@@ -240,12 +240,80 @@ CREATE OR REPLACE SEMANTIC VIEW ANALYTICS.EARNINGS_ANALYSIS_VIEW
 	COMMENT='Earnings analysis semantic view for Cortex Analyst';
 ```
 
+### Testing and Validation Patterns
+
+#### Semantic View Testing Pattern (MANDATORY)
+**CRITICAL**: Use these exact patterns for testing semantic views:
+
+```sql
+-- Basic functionality test
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {primary_metric}
+    DIMENSIONS {primary_dimension}
+) LIMIT 5;
+
+-- Complex query test
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {metric1}, {metric2}
+    DIMENSIONS {dimension1}, {dimension2}, {dimension3}
+) LIMIT 10;
+
+-- Business scenario test (use actual business queries your agents will run)
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    DIMENSIONS {relevant_dimensions}
+    METRICS {relevant_metrics}
+    WHERE {business_filters}
+) LIMIT 20;
+```
+
+#### Testing Examples for Each View:
+
+**EARNINGS_ANALYSIS_VIEW:**
+```sql
+-- Basic test
+SELECT * FROM SEMANTIC_VIEW(
+    ANALYTICS.EARNINGS_ANALYSIS_VIEW
+    METRICS TOTAL_ACTUAL
+    DIMENSIONS TICKER
+) LIMIT 5;
+
+-- Complex test
+SELECT * FROM SEMANTIC_VIEW(
+    ANALYTICS.EARNINGS_ANALYSIS_VIEW
+    METRICS TOTAL_ACTUAL, AVG_ESTIMATE
+    DIMENSIONS TICKER, FISCAL_QUARTER, METRIC_NAME
+) LIMIT 10;
+```
+
+**THEMATIC_RESEARCH_VIEW:**
+```sql
+-- Basic test
+SELECT * FROM SEMANTIC_VIEW(
+    ANALYTICS.THEMATIC_RESEARCH_VIEW
+    METRICS AVG_PRICE
+    DIMENSIONS TICKER
+) LIMIT 5;
+```
+
+**CLIENT_MARKET_IMPACT_VIEW:**
+```sql
+-- Basic test
+SELECT * FROM SEMANTIC_VIEW(
+    ANALYTICS.CLIENT_MARKET_IMPACT_VIEW
+    METRICS ENGAGEMENT_COUNT
+    DIMENSIONS CLIENT_NAME
+) LIMIT 5;
+```
+
 ### Development Workflow
 
 1. **Plan the semantic view** - identify tables, relationships, dimensions, metrics
 2. **Verify column names** - run `DESCRIBE TABLE` on each physical table
 3. **Create the SQL** - follow exact syntax patterns above
 4. **Test creation** - use error handling pattern to debug issues
-5. **Validate functionality** - test with Cortex Analyst queries
+5. **Validate functionality** - use SEMANTIC_VIEW() testing patterns above
 
 **CRITICAL**: Semantic views are required for Cortex Analyst - regular SQL views will NOT work.

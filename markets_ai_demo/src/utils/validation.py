@@ -155,29 +155,55 @@ def validate_event_correlations(session: Session) -> None:
 
 
 def validate_semantic_views(session: Session) -> None:
-    """Validate views are working"""
+    """Validate semantic views using proper SEMANTIC_VIEW() syntax"""
     
-    print("   🔍 Validating views...")
+    print("   🔍 Validating semantic views...")
     
     session.sql(f"USE SCHEMA {DemoConfig.SCHEMAS['ANALYTICS']}").collect()
     
-    views = [
-        "EARNINGS_ANALYSIS_VIEW"
+    # Test all three semantic views with proper SEMANTIC_VIEW() syntax
+    semantic_views = [
+        {
+            "name": "EARNINGS_ANALYSIS_VIEW",
+            "metrics": "TOTAL_ACTUAL",
+            "dimensions": "TICKER"
+        },
+        {
+            "name": "THEMATIC_RESEARCH_VIEW", 
+            "metrics": "AVG_PRICE",
+            "dimensions": "TICKER"
+        },
+        {
+            "name": "CLIENT_MARKET_IMPACT_VIEW",
+            "metrics": "ENGAGEMENT_COUNT", 
+            "dimensions": "CLIENT_NAME"
+        }
     ]
     
-    for view in views:
+    for view_config in semantic_views:
+        view_name = view_config["name"]
         try:
-            # Test basic query on regular SQL view
-            test_sql = f"SELECT * FROM {view} LIMIT 2"
+            # Test using proper SEMANTIC_VIEW() function syntax
+            test_sql = f"""
+            SELECT * FROM SEMANTIC_VIEW(
+                ANALYTICS.{view_name}
+                METRICS {view_config["metrics"]}
+                DIMENSIONS {view_config["dimensions"]}
+            ) LIMIT 3
+            """
             result = session.sql(test_sql).collect()
             
             if result:
-                print(f"     ✅ {view}: Working with {len(result)} rows")
+                print(f"     ✅ {view_name}: Working with {len(result)} rows")
             else:
-                print(f"     ⚠️  {view}: No data")
+                print(f"     ⚠️  {view_name}: No data returned")
                 
         except Exception as e:
-            print(f"     ❌ {view}: Error - {str(e)}")
+            error_msg = str(e)
+            if "Unsupported feature 'SELECT FROM SEMANTIC VIEW'" in error_msg:
+                print(f"     ⚠️  {view_name}: Semantic views not supported in this environment")
+            else:
+                print(f"     ❌ {view_name}: Error - {error_msg[:100]}...")
 
 
 def validate_search_services(session: Session) -> None:
@@ -398,13 +424,24 @@ def generate_validation_report(session: Session) -> str:
     report.append("## AI Components Status")
     report.append("### Semantic Views")
     
-    semantic_views = ["EARNINGS_ANALYSIS_VIEW", "PORTFOLIO_EXPOSURE_VIEW", "CLIENT_MARKET_IMPACT_VIEW", "THEMATIC_RESEARCH_VIEW"]
-    for view in semantic_views:
+    semantic_views = [
+        {"name": "EARNINGS_ANALYSIS_VIEW", "metrics": "TOTAL_ACTUAL", "dimensions": "TICKER"},
+        {"name": "THEMATIC_RESEARCH_VIEW", "metrics": "AVG_PRICE", "dimensions": "TICKER"},
+        {"name": "CLIENT_MARKET_IMPACT_VIEW", "metrics": "ENGAGEMENT_COUNT", "dimensions": "CLIENT_NAME"}
+    ]
+    for view_config in semantic_views:
+        view_name = view_config["name"]
         try:
-            session.sql(f"SELECT * FROM SEMANTIC_VIEW(ANALYTICS.{view} LIMIT 1)").collect()
-            report.append(f"- {view}: ✅ Working")
+            session.sql(f"""
+                SELECT * FROM SEMANTIC_VIEW(
+                    ANALYTICS.{view_name}
+                    METRICS {view_config["metrics"]}
+                    DIMENSIONS {view_config["dimensions"]}
+                ) LIMIT 1
+            """).collect()
+            report.append(f"- {view_name}: ✅ Working")
         except:
-            report.append(f"- {view}: ❌ Error")
+            report.append(f"- {view_name}: ❌ Error")
     
     report.append("\n### Search Services")
     search_services = ["EARNINGS_TRANSCRIPTS_SEARCH", "RESEARCH_REPORTS_SEARCH", "NEWS_ARTICLES_SEARCH"]

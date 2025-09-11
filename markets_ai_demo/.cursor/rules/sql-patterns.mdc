@@ -19,8 +19,6 @@ except Exception as e:
 ```
 
 ## Testing Pattern
-Always include validation queries:
-```sql
--- Test semantic view functionality
-SELECT * FROM SEMANTIC_VIEW({view_name} METRICS {metric} DIMENSIONS {dimension}) LIMIT 5;
-```
+Use appropriate testing patterns for each component type:
+- **Semantic Views**: See semantic-views.mdc for SEMANTIC_VIEW() testing patterns
+- **SQL Functions**: Test function availability before use (see examples above)
