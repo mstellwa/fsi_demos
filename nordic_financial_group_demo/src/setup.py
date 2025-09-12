@@ -26,6 +26,7 @@ class SnowdriftSetup:
         
         self.connection_name = connection_name
         self.session = None
+        self.owns_session = True  # Track if we own the session (and should close it)
         
     def create_session(self) -> Session:
         """Create Snowpark session using ~/.snowflake/connections.toml"""
@@ -40,6 +41,34 @@ class SnowdriftSetup:
             logger.error("Ensure ~/.snowflake/connections.toml is configured properly")
             raise
     
+    def setup_warehouses(self):
+        """Create dedicated warehouses for execution and Cortex Search"""
+        logger.info("Setting up warehouses...")
+        
+        # Create execution warehouse for all data operations
+        self.session.sql("""
+            CREATE OR REPLACE WAREHOUSE SNOWDRIFT_EXECUTION_WH
+            WITH WAREHOUSE_SIZE = 'MEDIUM'
+            AUTO_SUSPEND = 60
+            AUTO_RESUME = TRUE
+            COMMENT = 'Dedicated warehouse for Snowdrift Financials data operations'
+        """).collect()
+        logger.info("✓ SNOWDRIFT_EXECUTION_WH created")
+        
+        # Create search warehouse ONLY for Cortex Search service WAREHOUSE parameter
+        self.session.sql("""
+            CREATE OR REPLACE WAREHOUSE SNOWDRIFT_SEARCH_WH
+            WITH WAREHOUSE_SIZE = 'MEDIUM'
+            AUTO_SUSPEND = 60
+            AUTO_RESUME = TRUE
+            COMMENT = 'Dedicated warehouse for Snowdrift Financials Cortex Search services (WAREHOUSE parameter only)'
+        """).collect()
+        logger.info("✓ SNOWDRIFT_SEARCH_WH created (for Cortex Search WAREHOUSE parameter)")
+        
+        # Use execution warehouse for ALL subsequent operations
+        self.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
+        logger.info("✓ Using SNOWDRIFT_EXECUTION_WH for all data operations")
+
     def setup_database_and_schemas(self):
         """Create database and schemas"""
         logger.info("Setting up database and schemas...")
@@ -528,8 +557,12 @@ class SnowdriftSetup:
         logger.info("Starting Snowdrift Financials setup...")
         
         try:
-            # Create session
-            self.create_session()
+            # Create session only if not already provided
+            if self.session is None:
+                self.create_session()
+            
+            # Create dedicated warehouses first
+            self.setup_warehouses()
             
             # Setup database and schemas
             self.setup_database_and_schemas()
@@ -556,7 +589,8 @@ class SnowdriftSetup:
             logger.error(f"Setup failed: {str(e)}")
             raise
         finally:
-            if self.session:
+            # Only close session if we own it (not shared)
+            if self.session and self.owns_session:
                 self.session.close()
 
 def main():

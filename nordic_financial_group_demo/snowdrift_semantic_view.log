@@ -1,0 +1,172 @@
+2025-09-02 16:24:58,292 - INFO - Starting M3 - Semantic View Creation...
+2025-09-02 16:24:58,293 - INFO - Creating Snowpark session with connection: sfseeurope-mstellwall-aws-us-west3
+2025-09-02 16:24:58,297 - INFO - Snowflake Connector for Python Version: 3.17.1, Python Version: 3.10.13, Platform: macOS-15.6.1-arm64-arm-64bit
+2025-09-02 16:24:58,297 - INFO - Connecting to GLOBAL Snowflake domain
+2025-09-02 16:24:58,387 - INFO - Found credentials in shared credentials file: ~/.aws/credentials
+2025-09-02 16:24:58,398 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x16a0c0100>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /computeMetadata/v1/instance/service-accounts/default/email
+2025-09-02 16:24:58,398 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x16a0c3970>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /
+2025-09-02 16:24:58,588 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x16a0c13c0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com
+2025-09-02 16:24:58,589 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x16a0c1a20>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/instance?api-version=2021-02-01
+2025-09-02 16:24:59,758 - INFO - Snowpark Session information: 
+"version" : 1.36.0,
+"python.version" : 3.10.13,
+"python.connector.version" : 3.17.1,
+"python.connector.session.id" : 14521830077205286,
+"os.name" : Darwin
+
+2025-09-02 16:24:59,759 - INFO - Connected to: "sfseeurope-mstellwall-aws-us-west3"
+2025-09-02 16:25:00,062 - INFO - === Step 1: Create Insurance SEMANTIC VIEW ===
+2025-09-02 16:25:00,323 - INFO - Creating Insurance semantic view...
+2025-09-02 16:25:00,323 - INFO - Creating INSURANCE_ANALYTICS.NORWEGIAN_INSURANCE_SEMANTIC_VIEW...
+2025-09-02 16:25:00,803 - ERROR - Semantic view creation failed: (1304): 01bec881-0206-534b-0033-97870bbb2e6a: 000904 (42000): 01bec881-0206-534b-0033-97870bbb2e6a: SQL compilation error: error line 152 at position 78
+invalid identifier 'POLICIES.POLICY_ID'
+There are existing quoted column identifiers: ['"status"']. Please use one of them to reference the column. See more details on Snowflake identifier requirements https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+2025-09-02 16:25:00,804 - INFO - Closing session: 14521830077205286
+2025-09-02 16:25:00,804 - INFO - Canceling all running queries
+2025-09-02 16:25:01,405 - INFO - Closed session: 14521830077205286
+2025-09-02 16:25:01,406 - ERROR - Execution failed: (1304): 01bec881-0206-534b-0033-97870bbb2e6a: 000904 (42000): 01bec881-0206-534b-0033-97870bbb2e6a: SQL compilation error: error line 152 at position 78
+invalid identifier 'POLICIES.POLICY_ID'
+There are existing quoted column identifiers: ['"status"']. Please use one of them to reference the column. See more details on Snowflake identifier requirements https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+2025-09-02 16:25:01,406 - INFO - Closed session: 14521830077205286
+2025-09-02 16:25:29,849 - INFO - Starting M3 - Semantic View Creation...
+2025-09-02 16:25:29,849 - INFO - Creating Snowpark session with connection: sfseeurope-mstellwall-aws-us-west3
+2025-09-02 16:25:29,853 - INFO - Snowflake Connector for Python Version: 3.17.1, Python Version: 3.10.13, Platform: macOS-15.6.1-arm64-arm-64bit
+2025-09-02 16:25:29,853 - INFO - Connecting to GLOBAL Snowflake domain
+2025-09-02 16:25:29,940 - INFO - Found credentials in shared credentials file: ~/.aws/credentials
+2025-09-02 16:25:29,948 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x11fcc1d50>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /computeMetadata/v1/instance/service-accounts/default/email
+2025-09-02 16:25:29,948 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x11fcc17b0>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /
+2025-09-02 16:25:30,141 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x11fcc1de0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com
+2025-09-02 16:25:30,142 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x11fcc3970>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/instance?api-version=2021-02-01
+2025-09-02 16:25:31,092 - INFO - Snowpark Session information: 
+"version" : 1.36.0,
+"python.version" : 3.10.13,
+"python.connector.version" : 3.17.1,
+"python.connector.session.id" : 14521830077208574,
+"os.name" : Darwin
+
+2025-09-02 16:25:31,092 - INFO - Connected to: "sfseeurope-mstellwall-aws-us-west3"
+2025-09-02 16:25:31,346 - INFO - === Step 1: Create Insurance SEMANTIC VIEW ===
+2025-09-02 16:25:31,649 - INFO - Creating Insurance semantic view...
+2025-09-02 16:25:31,650 - INFO - Creating INSURANCE_ANALYTICS.NORWEGIAN_INSURANCE_SEMANTIC_VIEW...
+2025-09-02 16:25:32,152 - ERROR - Semantic view creation failed: (1304): 01bec881-0206-5a1e-0033-97870bbb1da6: 010227 (42601): 01bec881-0206-5a1e-0033-97870bbb1da6: SQL compilation error:
+Invalid dimension definition for 'CLAIMS.IS_FLOOD_RELATED': Expressions on entity 'CLAIMS' cannot refer to expressions on entity 'GEO_RISK'. Such reference in one-to-one or multi-path relationships is not supported.
+2025-09-02 16:25:32,152 - INFO - Closing session: 14521830077208574
+2025-09-02 16:25:32,153 - INFO - Canceling all running queries
+2025-09-02 16:25:32,743 - INFO - Closed session: 14521830077208574
+2025-09-02 16:25:32,744 - ERROR - Execution failed: (1304): 01bec881-0206-5a1e-0033-97870bbb1da6: 010227 (42601): 01bec881-0206-5a1e-0033-97870bbb1da6: SQL compilation error:
+Invalid dimension definition for 'CLAIMS.IS_FLOOD_RELATED': Expressions on entity 'CLAIMS' cannot refer to expressions on entity 'GEO_RISK'. Such reference in one-to-one or multi-path relationships is not supported.
+2025-09-02 16:25:32,744 - INFO - Closed session: 14521830077208574
+2025-09-02 16:26:00,587 - INFO - Starting M3 - Semantic View Creation...
+2025-09-02 16:26:00,587 - INFO - Creating Snowpark session with connection: sfseeurope-mstellwall-aws-us-west3
+2025-09-02 16:26:00,591 - INFO - Snowflake Connector for Python Version: 3.17.1, Python Version: 3.10.13, Platform: macOS-15.6.1-arm64-arm-64bit
+2025-09-02 16:26:00,591 - INFO - Connecting to GLOBAL Snowflake domain
+2025-09-02 16:26:00,677 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1680c3ca0>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /
+2025-09-02 16:26:00,678 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x168104c40>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /computeMetadata/v1/instance/service-accounts/default/email
+2025-09-02 16:26:00,678 - INFO - Found credentials in shared credentials file: ~/.aws/credentials
+2025-09-02 16:26:00,879 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1680c04c0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com
+2025-09-02 16:26:00,879 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1680c15d0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/instance?api-version=2021-02-01
+2025-09-02 16:26:01,827 - INFO - Snowpark Session information: 
+"version" : 1.36.0,
+"python.version" : 3.10.13,
+"python.connector.version" : 3.17.1,
+"python.connector.session.id" : 14521830077227222,
+"os.name" : Darwin
+
+2025-09-02 16:26:01,828 - INFO - Connected to: "sfseeurope-mstellwall-aws-us-west3"
+2025-09-02 16:26:02,100 - INFO - === Step 1: Create Insurance SEMANTIC VIEW ===
+2025-09-02 16:26:02,305 - INFO - Creating Insurance semantic view...
+2025-09-02 16:26:02,305 - INFO - Creating INSURANCE_ANALYTICS.NORWEGIAN_INSURANCE_SEMANTIC_VIEW...
+2025-09-02 16:26:03,954 - INFO - ✓ NORWEGIAN_INSURANCE_SEMANTIC_VIEW created successfully
+2025-09-02 16:26:03,954 - INFO - === Step 2: Create Banking CUSTOMER_360_VIEW ===
+2025-09-02 16:26:03,954 - INFO - Creating BANK_ANALYTICS.CUSTOMER_360_VIEW...
+2025-09-02 16:26:05,179 - INFO - ✓ CUSTOMER_360_VIEW created successfully
+2025-09-02 16:26:05,180 - INFO - === Step 3: Validate Banking SEMANTIC VIEW ===
+2025-09-02 16:26:05,180 - INFO - Validating Banking semantic view with test queries...
+2025-09-02 16:26:05,180 - INFO - Q1: Customer count by municipality
+2025-09-02 16:26:06,601 - INFO - ✓ Results: 5 rows returned
+2025-09-02 16:26:06,601 - INFO -   Row 1: {'CUSTOMER_MUNICIPALITY': 'Drammen', 'CUSTOMER_COUNT': 2537}
+2025-09-02 16:26:06,601 - INFO -   Row 2: {'CUSTOMER_MUNICIPALITY': 'Stavanger', 'CUSTOMER_COUNT': 2412}
+2025-09-02 16:26:06,601 - INFO -   Row 3: {'CUSTOMER_MUNICIPALITY': 'Kristiansand', 'CUSTOMER_COUNT': 2600}
+2025-09-02 16:26:06,602 - INFO - Q2: Cross-division customer analysis
+2025-09-02 16:26:07,593 - INFO - ✓ Results: 2 rows returned
+2025-09-02 16:26:07,594 - INFO -   Row 1: {'HAS_INSURANCE': 'Yes', 'CUSTOMER_COUNT': 5838, 'INSURANCE_OVERLAP_COUNT': 5838}
+2025-09-02 16:26:07,594 - INFO -   Row 2: {'HAS_INSURANCE': 'No', 'CUSTOMER_COUNT': 19162, 'INSURANCE_OVERLAP_COUNT': 0}
+2025-09-02 16:26:07,594 - INFO - Q3: Account balances by account type
+2025-09-02 16:26:08,398 - INFO - ✓ Results: 4 rows returned
+2025-09-02 16:26:08,399 - INFO -   Row 1: {'ACCOUNT_TYPE': 'CHECKING', 'TOTAL_BALANCE': 939765166.62, 'AVERAGE_BALANCE': 25537.790880730456}
+2025-09-02 16:26:08,399 - INFO -   Row 2: {'ACCOUNT_TYPE': 'SAVINGS', 'TOTAL_BALANCE': 5138587171.92, 'AVERAGE_BALANCE': 252200.59739484664}
+2025-09-02 16:26:08,399 - INFO -   Row 3: {'ACCOUNT_TYPE': 'MORTGAGE', 'TOTAL_BALANCE': -6929140595.68, 'AVERAGE_BALANCE': -1254597.2470903494}
+2025-09-02 16:26:08,399 - INFO - Q4: Transaction patterns by category
+2025-09-02 16:26:09,517 - INFO - ✓ Results: 10 rows returned
+2025-09-02 16:26:09,517 - INFO -   Row 1: {'MERCHANT_CATEGORY': 'SERVICES', 'TRANSACTION_COUNT': 420277, 'TOTAL_TRANSACTION_AMOUNT': 1093815985.01}
+2025-09-02 16:26:09,517 - INFO -   Row 2: {'MERCHANT_CATEGORY': 'TRANSPORT', 'TRANSACTION_COUNT': 420643, 'TOTAL_TRANSACTION_AMOUNT': 115800263.91999999}
+2025-09-02 16:26:09,517 - INFO -   Row 3: {'MERCHANT_CATEGORY': 'INCOME', 'TRANSACTION_COUNT': 740865, 'TOTAL_TRANSACTION_AMOUNT': 2872359622.2}
+2025-09-02 16:26:09,518 - INFO - Q5: Loan portfolio summary
+2025-09-02 16:26:10,269 - INFO - ✓ Results: 3 rows returned
+2025-09-02 16:26:10,269 - INFO -   Row 1: {'LOAN_TYPE': 'AUTO', 'LOAN_COUNT': 1459, 'TOTAL_LOAN_BALANCE': 130269118.35}
+2025-09-02 16:26:10,269 - INFO -   Row 2: {'LOAN_TYPE': 'MORTGAGE', 'LOAN_COUNT': 10509, 'TOTAL_LOAN_BALANCE': 33657395035.73}
+2025-09-02 16:26:10,269 - INFO -   Row 3: {'LOAN_TYPE': 'PERSONAL', 'LOAN_COUNT': 3032, 'TOTAL_LOAN_BALANCE': 90517555.05}
+2025-09-02 16:26:10,270 - INFO - Banking semantic view validation completed: 5/5 queries passed
+2025-09-02 16:26:10,270 - INFO - Semantic View Creation completed successfully!
+2025-09-02 16:26:10,270 - INFO - Both Insurance and Banking SEMANTIC VIEWs are ready for Cortex Analyst
+2025-09-02 16:26:10,270 - INFO - Closing session: 14521830077227222
+2025-09-02 16:26:10,270 - INFO - Canceling all running queries
+2025-09-02 16:26:10,906 - INFO - Closed session: 14521830077227222
+2025-09-02 16:26:10,906 - INFO - Closed session: 14521830077227222
+2025-09-02 17:18:43,618 - INFO - Starting M3 - Semantic View Creation...
+2025-09-02 17:18:43,618 - INFO - Creating Snowpark session with connection: sfseeurope-mstellwall-aws-us-west3
+2025-09-02 17:18:43,622 - INFO - Snowflake Connector for Python Version: 3.17.1, Python Version: 3.10.13, Platform: macOS-15.6.1-arm64-arm-64bit
+2025-09-02 17:18:43,623 - INFO - Connecting to GLOBAL Snowflake domain
+2025-09-02 17:18:43,713 - INFO - Found credentials in shared credentials file: ~/.aws/credentials
+2025-09-02 17:18:43,713 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1451c0490>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /
+2025-09-02 17:18:43,713 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1451c1a50>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /computeMetadata/v1/instance/service-accounts/default/email
+2025-09-02 17:18:43,913 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1451c3190>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com
+2025-09-02 17:18:43,914 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<snowflake.connector.vendored.urllib3.connection.HTTPConnection object at 0x1451c19f0>, 'Connection to 169.254.169.254 timed out. (connect timeout=0.2)')': /metadata/instance?api-version=2021-02-01
+2025-09-02 17:18:44,868 - INFO - Snowpark Session information: 
+"version" : 1.36.0,
+"python.version" : 3.10.13,
+"python.connector.version" : 3.17.1,
+"python.connector.session.id" : 14521830077235366,
+"os.name" : Darwin
+
+2025-09-02 17:18:44,868 - INFO - Connected to: "sfseeurope-mstellwall-aws-us-west3"
+2025-09-02 17:18:45,068 - INFO - === Step 1: Create Insurance SEMANTIC VIEW ===
+2025-09-02 17:18:45,387 - INFO - Creating Insurance semantic view...
+2025-09-02 17:18:45,387 - INFO - Creating INSURANCE_ANALYTICS.NORWEGIAN_INSURANCE_SEMANTIC_VIEW...
+2025-09-02 17:18:46,406 - INFO - ✓ NORWEGIAN_INSURANCE_SEMANTIC_VIEW created successfully
+2025-09-02 17:18:46,406 - INFO - === Step 2: Create Banking CUSTOMER_360_VIEW ===
+2025-09-02 17:18:46,406 - INFO - Creating BANK_ANALYTICS.CUSTOMER_360_VIEW...
+2025-09-02 17:18:47,407 - INFO - ✓ CUSTOMER_360_VIEW created successfully
+2025-09-02 17:18:47,408 - INFO - === Step 3: Validate Banking SEMANTIC VIEW ===
+2025-09-02 17:18:47,408 - INFO - Validating Banking semantic view with test queries...
+2025-09-02 17:18:47,408 - INFO - Q1: Customer count by municipality
+2025-09-02 17:18:48,247 - INFO - ✓ Results: 5 rows returned
+2025-09-02 17:18:48,247 - INFO -   Row 1: {'CUSTOMER_MUNICIPALITY': 'Drammen', 'CUSTOMER_COUNT': 2537}
+2025-09-02 17:18:48,247 - INFO -   Row 2: {'CUSTOMER_MUNICIPALITY': 'Stavanger', 'CUSTOMER_COUNT': 2412}
+2025-09-02 17:18:48,247 - INFO -   Row 3: {'CUSTOMER_MUNICIPALITY': 'Kristiansand', 'CUSTOMER_COUNT': 2600}
+2025-09-02 17:18:48,247 - INFO - Q2: Cross-division customer analysis
+2025-09-02 17:18:48,812 - INFO - ✓ Results: 2 rows returned
+2025-09-02 17:18:48,813 - INFO -   Row 1: {'HAS_INSURANCE': 'Yes', 'CUSTOMER_COUNT': 5838, 'INSURANCE_OVERLAP_COUNT': 5838}
+2025-09-02 17:18:48,813 - INFO -   Row 2: {'HAS_INSURANCE': 'No', 'CUSTOMER_COUNT': 19162, 'INSURANCE_OVERLAP_COUNT': 0}
+2025-09-02 17:18:48,813 - INFO - Q3: Account balances by account type
+2025-09-02 17:18:49,378 - INFO - ✓ Results: 4 rows returned
+2025-09-02 17:18:49,379 - INFO -   Row 1: {'ACCOUNT_TYPE': 'CHECKING', 'TOTAL_BALANCE': 939765166.62, 'AVERAGE_BALANCE': 25537.790880730456}
+2025-09-02 17:18:49,379 - INFO -   Row 2: {'ACCOUNT_TYPE': 'SAVINGS', 'TOTAL_BALANCE': 5138587171.92, 'AVERAGE_BALANCE': 252200.59739484664}
+2025-09-02 17:18:49,379 - INFO -   Row 3: {'ACCOUNT_TYPE': 'MORTGAGE', 'TOTAL_BALANCE': -6929140595.68, 'AVERAGE_BALANCE': -1254597.2470903494}
+2025-09-02 17:18:49,379 - INFO - Q4: Transaction patterns by category
+2025-09-02 17:18:50,248 - INFO - ✓ Results: 10 rows returned
+2025-09-02 17:18:50,248 - INFO -   Row 1: {'MERCHANT_CATEGORY': 'TRANSPORT', 'TRANSACTION_COUNT': 420643, 'TOTAL_TRANSACTION_AMOUNT': 115800263.91999999}
+2025-09-02 17:18:50,249 - INFO -   Row 2: {'MERCHANT_CATEGORY': 'SERVICES', 'TRANSACTION_COUNT': 420277, 'TOTAL_TRANSACTION_AMOUNT': 1093815985.0100002}
+2025-09-02 17:18:50,249 - INFO -   Row 3: {'MERCHANT_CATEGORY': 'INCOME', 'TRANSACTION_COUNT': 740865, 'TOTAL_TRANSACTION_AMOUNT': 2872359622.2}
+2025-09-02 17:18:50,249 - INFO - Q5: Loan portfolio summary
+2025-09-02 17:18:50,910 - INFO - ✓ Results: 3 rows returned
+2025-09-02 17:18:50,911 - INFO -   Row 1: {'LOAN_TYPE': 'AUTO', 'LOAN_COUNT': 1459, 'TOTAL_LOAN_BALANCE': 130269118.35}
+2025-09-02 17:18:50,911 - INFO -   Row 2: {'LOAN_TYPE': 'MORTGAGE', 'LOAN_COUNT': 10509, 'TOTAL_LOAN_BALANCE': 33657395035.73}
+2025-09-02 17:18:50,911 - INFO -   Row 3: {'LOAN_TYPE': 'PERSONAL', 'LOAN_COUNT': 3032, 'TOTAL_LOAN_BALANCE': 90517555.05}
+2025-09-02 17:18:50,911 - INFO - Banking semantic view validation completed: 5/5 queries passed
+2025-09-02 17:18:50,911 - INFO - Semantic View Creation completed successfully!
+2025-09-02 17:18:50,911 - INFO - Both Insurance and Banking SEMANTIC VIEWs are ready for Cortex Analyst
+2025-09-02 17:18:50,911 - INFO - Closing session: 14521830077235366
+2025-09-02 17:18:50,911 - INFO - Canceling all running queries
+2025-09-02 17:18:51,465 - INFO - Closed session: 14521830077235366
+2025-09-02 17:18:51,466 - INFO - Closed session: 14521830077235366

@@ -29,6 +29,7 @@ class NorwegianDataGenerator:
         
         self.connection_name = connection_name
         self.session = None
+        self.owns_session = True  # Track if we own the session
         
         # Set up random seeds for deterministic generation
         self.global_seed = self.config['global']['global_seed']
@@ -542,8 +543,9 @@ class NorwegianDataGenerator:
         logger.info("Starting Norwegian Insurance Data Generation...")
         
         try:
-            # Create session
-            self.create_session()
+            # Create session only if not already provided
+            if self.session is None:
+                self.create_session()
             self.session.sql(f"USE DATABASE {self.config['global']['database']}").collect()
             
             # Generate all data
@@ -582,7 +584,8 @@ class NorwegianDataGenerator:
             logger.error(f"Data generation failed: {str(e)}")
             raise
         finally:
-            if self.session:
+            # Only close session if we own it (not shared)
+            if self.session and self.owns_session:
                 self.session.close()
 
 def main():

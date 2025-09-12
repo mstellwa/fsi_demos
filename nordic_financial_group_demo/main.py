@@ -95,16 +95,26 @@ def check_scenario_dependencies(scenario: str, connection_name: str) -> bool:
         logger.warning(f"⚠ Could not verify dependencies for {scenario}: {str(e)}")
         return True  # Proceed anyway
 
-def run_setup(scenarios: list, connection_name: str = "default"):
+def run_setup(scenarios: list, connection_name: str = "default", shared_session=None):
     """Run foundation setup for specified scenarios"""
     logger.info(f"=== Foundation Setup for scenarios: {', '.join(scenarios)} ===")
     
     # Setup always runs for all requested scenarios together
     setup = SnowdriftSetup(connection_name=connection_name)
+    if shared_session is None:
+        shared_session = setup.create_session()
+        setup.owns_session = False  # Don't close - we'll reuse this session
+    else:
+        setup.session = shared_session
+        setup.owns_session = False  # Don't close shared session
+        # Ensure we're using the correct warehouse
+        setup.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
+    
     setup.run_setup()
     logger.info("Foundation setup completed successfully!")
+    return shared_session
 
-def run_data_generation(scenarios: list, connection_name: str = "default"):
+def run_data_generation(scenarios: list, connection_name: str = "default", shared_session=None):
     """Run data generation for specified scenarios"""
     logger.info(f"=== Data Generation for scenarios: {', '.join(scenarios)} ===")
     
@@ -115,11 +125,19 @@ def run_data_generation(scenarios: list, connection_name: str = "default"):
             # Step 1: Generate structured insurance data
             logger.info("Step 1: Generating insurance structured data...")
             generator = NorwegianDataGenerator(connection_name=connection_name)
+            if shared_session:
+                generator.session = shared_session
+                generator.owns_session = False  # Don't close shared session
+                generator.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
             generator.run_data_generation()
             
             # Step 2: Generate insurance documents
             logger.info("Step 2: Generating insurance documents...")
             doc_generator = DocumentGenerator(connection_name=connection_name)
+            if shared_session:
+                doc_generator.session = shared_session
+                doc_generator.owns_session = False  # Don't close shared session
+                doc_generator.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
             doc_generator.run_document_generation()
             
         elif scenario == 'bank':
@@ -137,11 +155,17 @@ def run_data_generation(scenarios: list, connection_name: str = "default"):
             # Step 1: Generate structured banking data
             logger.info("Step 1: Generating banking structured data...")
             banking_generator = NorwegianBankingDataGenerator(connection_name=connection_name)
+            if shared_session:
+                banking_generator.session = shared_session
+                banking_generator.session.sql("USE WAREHOUSE SAM_DEMO_EXECUTION_WH").collect()
             banking_generator.run_banking_data_generation()
             
             # Step 2: Generate banking documents
             logger.info("Step 2: Generating banking documents...")
             banking_doc_generator = BankingDocumentGenerator(connection_name=connection_name)
+            if shared_session:
+                banking_doc_generator.session = shared_session
+                banking_doc_generator.session.sql("USE WAREHOUSE SAM_DEMO_EXECUTION_WH").collect()
             banking_doc_generator.run_banking_document_generation()
             
         elif scenario == 'asset_management':
@@ -149,17 +173,22 @@ def run_data_generation(scenarios: list, connection_name: str = "default"):
             logger.info("This will be implemented in Phase 3")
             
     logger.info("Data generation completed successfully!")
+    return shared_session
 
-def run_semantic_view(scenarios: list, connection_name: str = "default"):
+def run_semantic_view(scenarios: list, connection_name: str = "default", shared_session=None):
     """Run semantic view creation for specified scenarios"""
     logger.info(f"=== Semantic View Creation for scenarios: {', '.join(scenarios)} ===")
     
     # Use the enhanced semantic view creator that handles both Insurance and Banking
     creator = SemanticViewCreator(connection_name=connection_name)
+    if shared_session:
+        creator.session = shared_session
+        creator.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
     creator.run_semantic_view_creation()
     logger.info("Semantic view creation completed successfully!")
+    return shared_session
 
-def run_documents(scenarios: list, connection_name: str = "default"):
+def run_documents(scenarios: list, connection_name: str = "default", shared_session=None):
     """Run document generation for specified scenarios"""
     logger.info(f"=== Document Generation for scenarios: {', '.join(scenarios)} ===")
     
@@ -167,6 +196,9 @@ def run_documents(scenarios: list, connection_name: str = "default"):
         if scenario == 'insurance':
             logger.info("Generating Insurance documents...")
             doc_generator = DocumentGenerator(connection_name=connection_name)
+            if shared_session:
+                doc_generator.session = shared_session
+                doc_generator.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
             doc_generator.run_document_generation()
             
         elif scenario == 'bank':
@@ -176,21 +208,29 @@ def run_documents(scenarios: list, connection_name: str = "default"):
                 
             logger.info("Generating Banking documents...")
             banking_doc_generator = BankingDocumentGenerator(connection_name=connection_name)
+            if shared_session:
+                banking_doc_generator.session = shared_session
+                banking_doc_generator.session.sql("USE WAREHOUSE SAM_DEMO_EXECUTION_WH").collect()
             banking_doc_generator.run_banking_document_generation()
             
         elif scenario == 'asset_management':
             logger.info("Asset Management document generation not yet implemented")
             
     logger.info("Document generation completed successfully!")
+    return shared_session
 
-def run_search_services(scenarios: list, connection_name: str = "default"):
+def run_search_services(scenarios: list, connection_name: str = "default", shared_session=None):
     """Run Cortex Search services creation for specified scenarios"""
     logger.info(f"=== Search Services Creation for scenarios: {', '.join(scenarios)} ===")
     
     # Use the enhanced search service creator that handles all scenarios
     creator = SearchServiceCreator(connection_name=connection_name)
+    if shared_session:
+        creator.session = shared_session
+        creator.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
     creator.run_search_service_creation()
     logger.info("Search services creation completed successfully!")
+    return shared_session
 
 def run_scenario_setup(scenarios: list, steps: list, connection_name: str = "default"):
     """Run complete setup for specified scenarios and steps"""
@@ -199,31 +239,34 @@ def run_scenario_setup(scenarios: list, steps: list, connection_name: str = "def
     logger.info(f"Scenarios: {', '.join(scenario_names)}")
     logger.info(f"Steps: {', '.join(steps)}")
     
+    # Create a single session for all operations to minimize connections
+    shared_session = None
+    
     try:
         # Step 1: Foundation setup (if requested)
         if 'setup' in steps:
             logger.info("Starting M1 - Foundation Setup...")
-            run_setup(scenarios, connection_name)
+            shared_session = run_setup(scenarios, connection_name, shared_session)
         
         # Step 2: Data generation (if requested)
         if 'data' in steps:
             logger.info("Starting M2/M4 - Data Generation...")
-            run_data_generation(scenarios, connection_name)
+            shared_session = run_data_generation(scenarios, connection_name, shared_session)
         
         # Step 3: Semantic view creation (if requested)
         if 'semantic' in steps:
             logger.info("Starting M3 - Semantic View Creation...")
-            run_semantic_view(scenarios, connection_name)
+            shared_session = run_semantic_view(scenarios, connection_name, shared_session)
         
         # Step 4: Document generation (if requested and not done in data step)
         if 'documents' in steps:
             logger.info("Starting M4 - Document Generation...")
-            run_documents(scenarios, connection_name)
+            shared_session = run_documents(scenarios, connection_name, shared_session)
         
         # Step 5: Search services creation (if requested)
         if 'search' in steps:
             logger.info("Starting M5 - Search Services Creation...")
-            run_search_services(scenarios, connection_name)
+            shared_session = run_search_services(scenarios, connection_name, shared_session)
         
         logger.info("🎉 Snowdrift Financials setup completed successfully!")
         logger.info(f"✓ Scenarios completed: {', '.join(scenario_names)}")
@@ -233,6 +276,14 @@ def run_scenario_setup(scenarios: list, steps: list, connection_name: str = "def
     except Exception as e:
         logger.error(f"Setup failed: {str(e)}")
         raise
+    finally:
+        # Clean up session
+        if shared_session:
+            try:
+                shared_session.close()
+                logger.info("✓ Shared session closed")
+            except Exception as e:
+                logger.warning(f"Warning: Could not close shared session: {e}")
 
 def main():
     """Main entry point with scenario-based command line interface"""

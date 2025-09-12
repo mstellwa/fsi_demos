@@ -52,6 +52,11 @@ class SearchServiceCreator:
             logger.error("Ensure ~/.snowflake/connections.toml is configured properly")
             raise
     
+    def ensure_execution_warehouse(self):
+        """Ensure we're using the execution warehouse for all operations"""
+        logger.info("Ensuring SNOWDRIFT_EXECUTION_WH is used for all operations")
+        self.session.sql("USE WAREHOUSE SNOWDRIFT_EXECUTION_WH").collect()
+        
     def create_claims_search_service(self):
         """Create Cortex Search service for claims documents"""
         logger.info("Creating CLAIMS_SEARCH_SERVICE...")
@@ -427,8 +432,13 @@ class SearchServiceCreator:
         logger.info("Starting M5 - Cortex Search Services Creation...")
         
         try:
-            self.create_session()
+            # Create session only if not already provided
+            if self.session is None:
+                self.create_session()
             self.session.sql(f"USE DATABASE {self.config['global']['database']}").collect()
+            
+            # Ensure we're using the execution warehouse for all operations
+            self.ensure_execution_warehouse()
             
             # Step 1: Create Insurance Search Services
             logger.info("=== Step 1: Insurance Claims Search Service ===")

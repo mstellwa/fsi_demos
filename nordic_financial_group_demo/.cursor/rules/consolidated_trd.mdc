@@ -18,6 +18,27 @@ alwaysApply: true
 - **Control Schema**: CONTROL (shared configuration and prompt management)
 - **Object Creation Pattern**: Use `CREATE DATABASE IF NOT EXISTS` for databases (safety) and `CREATE OR REPLACE` for all other objects (schemas, tables, views, search services) to enable easy re-running and updates
 
+### Warehouse Management
+- **Execution Warehouse**: SNOWDRIFT_EXECUTION_WH - Created first after connection for ALL operations (data, search service creation, etc.)
+- **Search Warehouse**: SNOWDRIFT_SEARCH_WH - Used ONLY as WAREHOUSE parameter for Cortex Search services, never for execution
+- **Creation Order**: Warehouses must be created immediately after session establishment, before any other operations
+- **Size Configuration**: AUTO_SUSPEND = 60 seconds, AUTO_RESUME = TRUE for cost optimization
+- **Usage Pattern**: Always use SNOWDRIFT_EXECUTION_WH for all execution, SNOWDRIFT_SEARCH_WH only as service WAREHOUSE parameter
+- **Separation of Concerns**: 
+  - SNOWDRIFT_EXECUTION_WH: For data operations, DDL statements, DML operations, session management
+  - SNOWDRIFT_SEARCH_WH: Exclusively for Cortex Search service WAREHOUSE parameter in CREATE CORTEX SEARCH SERVICE statements
+
+### Reserved Keywords Compliance
+- **Reference**: https://docs.snowflake.com/en/sql-reference/reserved-keywords
+- **Object Naming**: All table names, column names, view names, and search service names MUST avoid Snowflake reserved keywords
+- **Verification**: Our implementation uses 81 unique column names and all object names that are verified compliant with Snowflake reserved keywords
+- **Safe Patterns**: Compound names like `ORGANIZATION_NUMBER` and `CURRENT_BALANCE` are acceptable as they use reserved words as part of larger identifiers
+- **Column Names Verified**: All column names including `POLICY_ID`, `CLAIM_ID`, `CUSTOMER_ID`, `PREMIUM`, `COVERAGE_AMOUNT`, `MUNICIPALITY`, `POSTAL_CODE`, `DOC_TYPE`, `CREATED_AT`, `UPDATED_AT`, `STATUS` are compliant
+- **Table Names Verified**: All table names including `POLICIES`, `CLAIMS`, `CUSTOMERS`, `ACCOUNTS`, `GEO_RISK_SCORES`, `BRREG_SNAPSHOT`, `CLAIMS_DOCUMENTS`, `UNDERWRITING_DOCUMENTS` are compliant
+- **View Names Verified**: `NORWEGIAN_INSURANCE_SEMANTIC_VIEW`, `CUSTOMER_360_VIEW` are compliant
+- **Search Service Names Verified**: `CLAIMS_SEARCH_SERVICE`, `UNDERWRITING_SEARCH_SERVICE`, `ECONOMIC_SEARCH_SERVICE`, `COMPLIANCE_SEARCH_SERVICE` are compliant
+- **Best Practice**: When adding new objects, always cross-reference against the reserved keywords list to prevent SQL parsing conflicts
+
 ### Configuration Management
 - **Primary Configuration**: Use `config.yaml` for centralized configuration
 - **Global settings**: Database, connection, seeds
@@ -48,6 +69,8 @@ alwaysApply: true
 - **Attributes**: Always include ID, TITLE + scenario-specific metadata
 - **Embedding**: Use default embedding model
 - **Performance**: TARGET_LAG tuned for demo responsiveness (e.g., '1 minute')
+- **Warehouse**: Use dedicated SNOWDRIFT_SEARCH_WH for all search services
+- **Configuration**: Warehouse set in config.yaml and automatically applied during service creation
 - **Testing**: Use SEARCH_PREVIEW function if available, otherwise verify document counts
 - **Creation**: Use CREATE CORTEX SEARCH SERVICE syntax with proper ON, ATTRIBUTES, TARGET_LAG, WAREHOUSE
 

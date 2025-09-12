@@ -33,6 +33,7 @@ class DocumentGenerator:
             self.config = yaml.safe_load(f)
         self.connection_name = connection_name
         self.session = None
+        self.owns_session = True  # Track if we own the session
         
         # Document generation settings
         insurance_config = self.config.get('insurance', {})
@@ -791,7 +792,9 @@ class DocumentGenerator:
         logger.info("Starting M4 - Unstructured Content Generation...")
         
         try:
-            self.create_session()
+            # Create session only if not already provided
+            if self.session is None:
+                self.create_session()
             self.session.sql(f"USE DATABASE {self.config['global']['database']}").collect()
             
             # Process claims documents
@@ -812,7 +815,8 @@ class DocumentGenerator:
             logger.error(f"Document generation failed: {str(e)}")
             raise
         finally:
-            if self.session:
+            # Only close session if we own it (not shared)
+            if self.session and self.owns_session:
                 self.session.close()
 
 def main():

@@ -59,8 +59,8 @@ class SemanticViewCreator:
               
             claims AS INSURANCE.CLAIMS
               PRIMARY KEY (CLAIM_ID)
-              WITH SYNONYMS ('insurance claims', 'loss data', 'claim reports')
-              COMMENT = 'Insurance claims data including amounts, status, and dates',
+              WITH SYNONYMS ('insurance claims', 'loss data', 'claim reports', 'flood claims', 'property claims')
+              COMMENT = 'Insurance claims data including amounts, status, dates, and location information for flood and property damage analysis',
               
             geo_risk AS INSURANCE.GEO_RISK_SCORES
               PRIMARY KEY (MUNICIPALITY, POSTAL_CODE)
@@ -72,7 +72,9 @@ class SemanticViewCreator:
             claims_to_policies AS
               claims (POLICY_ID) REFERENCES policies,
             policies_to_geo_risk AS
-              policies (MUNICIPALITY, POSTAL_CODE) REFERENCES geo_risk (MUNICIPALITY, POSTAL_CODE)
+              policies (MUNICIPALITY, POSTAL_CODE) REFERENCES geo_risk (MUNICIPALITY, POSTAL_CODE),
+            claims_to_geo_risk AS
+              claims (MUNICIPALITY, POSTAL_CODE) REFERENCES geo_risk (MUNICIPALITY, POSTAL_CODE)
           )
 
           FACTS (
@@ -138,7 +140,38 @@ class SemanticViewCreator:
               
             claims.loss_year AS YEAR(claims.LOSS_DATE)
               WITH SYNONYMS = ('loss year', 'claim year', 'incident year')
-              COMMENT = 'Year when the loss occurred'
+              COMMENT = 'Year when the loss occurred',
+              
+            claims.claim_municipality AS claims.MUNICIPALITY
+              WITH SYNONYMS = ('claim municipality', 'claim location', 'loss municipality', 'damage municipality')
+              COMMENT = 'Norwegian municipality where the claim occurred',
+              
+            claims.claim_city AS claims.CITY
+              WITH SYNONYMS = ('claim city', 'loss city', 'damage location', 'incident city', 'Kristiansand', 'Bergen', 'Oslo', 'Stavanger', 'Trondheim')
+              COMMENT = 'City where the claim occurred - searchable by Norwegian city names',
+              
+            claims.is_flood_related AS 
+              CASE 
+                WHEN LOWER(claims.DESCRIPTION) LIKE '%flood%' 
+                  OR LOWER(claims.DESCRIPTION) LIKE '%water damage%'
+                  OR LOWER(claims.DESCRIPTION) LIKE '%storm surge%'
+                  OR LOWER(claims.DESCRIPTION) LIKE '%heavy rain%'
+                  OR LOWER(claims.DESCRIPTION) LIKE '%overflowing%'
+                THEN 'Yes'
+                ELSE 'No'
+              END
+              WITH SYNONYMS = ('flood claim', 'flood damage', 'water damage claim', 'flood related')
+              COMMENT = 'Text indicator with values "Yes" or "No" - whether claim is flood-related',
+              
+            claims.has_flood_damage AS (
+              LOWER(claims.DESCRIPTION) LIKE '%flood%' 
+              OR LOWER(claims.DESCRIPTION) LIKE '%water damage%'
+              OR LOWER(claims.DESCRIPTION) LIKE '%storm surge%'
+              OR LOWER(claims.DESCRIPTION) LIKE '%heavy rain%'
+              OR LOWER(claims.DESCRIPTION) LIKE '%overflowing%'
+            )
+              WITH SYNONYMS = ('flood damage', 'is flood', 'flood claim', 'water damage')
+              COMMENT = 'Boolean indicator (TRUE/FALSE) for flood-related claims - use for filtering'
           )
 
           METRICS (
@@ -176,7 +209,23 @@ class SemanticViewCreator:
               
             claims.total_paid_amount AS SUM(claims.PAID_AMOUNT)
               WITH SYNONYMS = ('total paid', 'settlements', 'compensation paid')
-              COMMENT = 'Total amount paid out for claims in NOK'
+              COMMENT = 'Total amount paid out for claims in NOK',
+              
+            claims.claim_frequency AS COUNT(claims.CLAIM_ID) / NULLIF(COUNT(DISTINCT claims.POLICY_ID), 0)
+              WITH SYNONYMS = ('claim frequency', 'claims per policy', 'loss frequency', 'claim rate')
+              COMMENT = 'Average number of claims per policy - key metric for underwriting',
+              
+            claims.claims_per_municipality AS COUNT(claims.CLAIM_ID) / NULLIF(COUNT(DISTINCT claims.MUNICIPALITY), 0)
+              WITH SYNONYMS = ('claims per municipality', 'municipal claim density', 'regional claim frequency')
+              COMMENT = 'Average number of claims per municipality for geographic risk analysis',
+              
+            claims.flood_claim_count AS COUNT(CASE WHEN LOWER(claims.DESCRIPTION) LIKE '%flood%' OR LOWER(claims.DESCRIPTION) LIKE '%water damage%' THEN 1 END)
+              WITH SYNONYMS = ('flood claims', 'water damage claims', 'flood claim count')
+              COMMENT = 'Number of flood-related claims based on description',
+              
+            claims.flood_claim_severity AS AVG(CASE WHEN LOWER(claims.DESCRIPTION) LIKE '%flood%' OR LOWER(claims.DESCRIPTION) LIKE '%water damage%' THEN claims.CLAIM_AMOUNT END)
+              WITH SYNONYMS = ('flood claim severity', 'average flood claim', 'flood damage amount')
+              COMMENT = 'Average claim amount for flood-related claims in NOK'
           )
 
           COMMENT = 'Comprehensive Norwegian Insurance Analytics - Policy, claims, and flood risk data for Snowdrift Financials with geographic and financial metrics'

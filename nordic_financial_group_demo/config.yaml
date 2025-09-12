@@ -55,7 +55,7 @@ insurance:
   search_services:
     target_lag: "1 minute"
     embedding_model: "default"
-    warehouse: "COMPUTE_WH"
+    warehouse: "SNOWDRIFT_SEARCH_WH"
     
   # Agent Configuration
   agents:
