@@ -61,6 +61,33 @@ cursor = session._conn._cursor  # DON'T DO THIS
 cursor.execute(sql)  # DON'T DO THIS
 ```
 
+## Dynamic Date Generation Pattern (CRITICAL)
+**MANDATORY**: Never use hardcoded dates - always generate dynamically
+
+```python
+# CORRECT: Dynamic date generation
+from utils.date_utils import get_historical_quarters, get_dynamic_date_range
+from config import DemoConfig
+
+# For quarterly data (earnings, estimates, reports)
+quarters = get_historical_quarters()  # Uses NUM_HISTORICAL_QUARTERS from config
+recent_quarters = get_historical_quarters()[:3]  # Last 3 quarters
+specific_count = get_historical_quarters(4)  # Override default
+
+# For daily data (prices, trading, events)
+start_date, end_date = get_dynamic_date_range()  # Covers all quarters
+
+# WRONG: Hardcoded dates
+quarters = ["2024-Q1", "2024-Q2", "2024-Q3"]  # DON'T DO THIS
+start_date = "2024-01-01"  # DON'T DO THIS
+```
+
+### Date Generation Rules
+- **NEVER** hardcode years like "2024" or dates like "2024-01-01"
+- **ALWAYS** use utilities from `utils.date_utils`
+- **MAKE** time periods configurable through `config.py`
+- **ENSURE** demo relevance by using current date as reference
+
 ## Unstructured Data Generation Pattern
 ```python
 from snowflake.snowpark.functions import col, lit

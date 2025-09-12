@@ -12,7 +12,7 @@ from snowflake.cortex import complete
 # Add the src directory to the path for relative imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from config import DemoConfig
-from utils.date_utils import get_historical_quarters, get_dynamic_date_range
+from utils.date_utils import get_historical_quarters, get_dynamic_date_range, get_quarter_date_range
 
 
 def get_current_and_previous_quarters():
@@ -100,8 +100,8 @@ def generate_sec_filings(session: Session) -> None:
             # Find relevant events for this company/quarter
             relevant_events = []
             if ticker in events_by_ticker:
-                quarter_start = datetime.strptime(f"{quarter}-01".replace("Q1", "01").replace("Q2", "04").replace("Q3", "07").replace("Q4", "10"), "%Y-%m-%d")
-                quarter_end = quarter_start + timedelta(days=90)
+                # Use proper quarter date range calculation
+                quarter_start, quarter_end = get_quarter_date_range(quarter)
                 
                 for event in events_by_ticker[ticker]:
                     event_date = datetime.strptime(str(event['EVENT_DATE']), "%Y-%m-%d")
@@ -218,8 +218,8 @@ def generate_earnings_transcripts(session: Session) -> None:
             # Find relevant events
             relevant_events = []
             if ticker in events_by_ticker:
-                quarter_start = datetime.strptime(f"{quarter}-01".replace("Q2", "04").replace("Q3", "07").replace("Q4", "10"), "%Y-%m-%d")
-                quarter_end = quarter_start + timedelta(days=90)
+                # Use proper quarter date range calculation
+                quarter_start, quarter_end = get_quarter_date_range(quarter)
                 
                 for event in events_by_ticker[ticker]:
                     event_date = datetime.strptime(str(event['EVENT_DATE']), "%Y-%m-%d")

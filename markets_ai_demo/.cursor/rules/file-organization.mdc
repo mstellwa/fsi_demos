@@ -25,7 +25,8 @@ description: Project structure and file organization standards
 │   │   └── agents.py             # Agent configuration templates
 │   └── utils/
 │       ├── snowpark_session.py   # Session management
-│       └── validation.py         # Data quality checks
+│       ├── validation.py         # Data quality checks
+│       └── date_utils.py          # Dynamic date generation utilities
 └── sql/
     ├── schemas.sql               # Database and schema creation
     └── cleanup.sql               # Reset/cleanup scripts
@@ -42,6 +43,10 @@ description: Project structure and file organization standards
 - Import snowflake.snowpark functions explicitly
 - Import snowflake.cortex.complete for text generation
 - Always import from config import DemoConfig
+- **CRITICAL**: Import dynamic date utilities for all time-based data:
+  ```python
+  from utils.date_utils import get_historical_quarters, get_dynamic_date_range
+  ```
 
 ## Documentation Requirements
 - Docstrings for all functions

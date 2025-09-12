@@ -33,6 +33,11 @@ Each scenario follows a 3-4 question conversation:
 - Responses should showcase multiple Snowflake AI features
 - Cross-reference capabilities between structured and unstructured data
 - Realistic but impressive results that highlight AI value
+- **CRITICAL**: All data must use dynamic dates for demo relevance:
+  - Earnings questions reference current/recent quarters
+  - Market events span realistic timeframes relative to demo date
+  - Research reports cite current market conditions
+  - Client data reflects recent engagement patterns
 
 ## Success Criteria
 - Agents respond within 30 seconds
