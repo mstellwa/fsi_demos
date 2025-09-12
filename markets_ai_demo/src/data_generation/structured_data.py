@@ -239,8 +239,19 @@ def generate_client_data(session: Session) -> None:
     session.sql(create_clients_sql).collect()
     
     clients_data = []
+    
+    # Strategic: Ensure we have asset managers at specific positions for targeting scenario
+    # Force CLI_003, CLI_007, CLI_011, CLI_015, CLI_019, CLI_023 to be Asset Managers for targeting
+    target_positions = [3, 7, 11, 15, 19, 23]  # These will be % 4 == 3, perfect for targeting
+    
     for i in range(DemoConfig.NUM_CLIENTS):
-        client_type = random.choice(DemoConfig.CLIENT_TYPES)
+        client_num = i + 1
+        
+        # Strategic assignment of client types
+        if client_num in target_positions:
+            client_type = "Asset Manager"  # Ensure targeting opportunities
+        else:
+            client_type = random.choice(DemoConfig.CLIENT_TYPES)
         
         # Generate realistic client names
         if client_type == "Asset Manager":
@@ -261,7 +272,7 @@ def generate_client_data(session: Session) -> None:
             aum = random.uniform(1, 50)
         
         clients_data.append({
-            "CLIENT_ID": f"CLI_{i+1:03d}",
+            "CLIENT_ID": f"CLI_{client_num:03d}",
             "CLIENT_NAME": name,
             "CLIENT_TYPE": client_type,
             "AUM_BILLIONS": round(aum, 1),
@@ -631,9 +642,9 @@ def generate_client_discussions(session: Session, clients_data: list) -> None:
         
         # Larger clients have more frequent discussions
         if client_type in ["Asset Manager", "Pension Fund"]:
-            num_discussions = random.randint(2, 4)  # 2-4 discussions in 6 months
+            base_discussions = random.randint(2, 4)  # 2-4 discussions in 6 months
         else:
-            num_discussions = random.randint(0, 2)  # 0-2 discussions in 6 months
+            base_discussions = random.randint(0, 2)  # 0-2 discussions in 6 months
         
         # Strategic assignment of discussion topics
         # Some asset managers with high EMIR engagement should NOT have EMIR discussions
@@ -643,16 +654,30 @@ def generate_client_discussions(session: Session, clients_data: list) -> None:
         if client_type == "Asset Manager":
             # Use client number to ensure some high-engagement clients don't have EMIR discussions
             client_num = int(client_id.split('_')[1]) if '_' in client_id else hash(client_id) % 100
-            # Strategic: only some asset manager clients have EMIR discussions
-            # This creates targeting opportunities for others
-            has_emir_discussion = (client_num % 3 == 0)  # Every 3rd client (CLI_003, CLI_006, etc.)  
+            # Strategic: Create targeting scenario where some asset managers with high EMIR engagement
+            # have NO recent discussions (within last 3 months) to enable outreach targeting
+            has_recent_discussion = (client_num % 4 != 3)  # 75% have discussions, 25% don't (clients ending in 3 have no recent discussions)
+            has_emir_discussion = (client_num % 3 == 0) and has_recent_discussion  # Only clients with recent discussions get EMIR topics
+            # For asset managers without recent discussions, still generate some old discussions for realism
+            num_discussions = base_discussions if has_recent_discussion else random.randint(1, 2)
         else:
+            has_recent_discussion = True  # All others have normal discussion patterns
             has_emir_discussion = client_hash < 60  # 60% chance for others
+            num_discussions = base_discussions
         
         for i in range(num_discussions):
-            discussion_date = start_date + timedelta(
-                days=random.randint(0, (end_date - start_date).days)
-            )
+            # If this is an asset manager without recent discussions, ensure discussions are older than 3 months
+            if client_type == "Asset Manager" and not has_recent_discussion:
+                # Generate discussions older than 3 months (90 days ago from now)
+                cutoff_date = datetime.now() - timedelta(days=90)
+                discussion_date = start_date + timedelta(
+                    days=random.randint(0, (cutoff_date - start_date).days)
+                )
+            else:
+                # Normal discussion date generation
+                discussion_date = start_date + timedelta(
+                    days=random.randint(0, (end_date - start_date).days)
+                )
             
             # Choose topic strategically
             if client_type == "Asset Manager" and i == 0 and has_emir_discussion:
