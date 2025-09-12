@@ -10,6 +10,11 @@ class DemoConfig:
     DATE_RANGE_START = "2024-01-01"
     DATE_RANGE_END = "2024-12-31"
     
+    # --- Time Series Configuration ---
+    # Number of historical quarters to generate (configurable)
+    NUM_HISTORICAL_QUARTERS = 8
+    # Generate data dynamically based on current date when setup runs
+    
     # --- Company & Market Data Configuration ---
     TICKER_LIST = [
         "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX",

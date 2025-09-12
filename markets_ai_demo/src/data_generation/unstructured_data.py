@@ -2,46 +2,39 @@
 # Unstructured data generation using Cortex complete() for Frost Markets Intelligence Demo
 
 import random
+import sys
+import os
 from datetime import datetime, timedelta
 from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col, lit
 from snowflake.cortex import complete
+
+# Add the src directory to the path for relative imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from config import DemoConfig
+from utils.date_utils import get_historical_quarters
 
 
 def get_current_and_previous_quarters():
     """Calculate current and previous quarters based on execution date"""
-    now = datetime.now()
-    current_year = now.year
-    current_month = now.month
+    quarters = get_historical_quarters(2)  # Get current and previous quarter
+    current_quarter_raw = quarters[0]  # Most recent
+    previous_quarter_raw = quarters[1]  # Previous
     
-    # Determine current quarter
-    if current_month <= 3:
-        current_quarter = 1
-    elif current_month <= 6:
-        current_quarter = 2
-    elif current_month <= 9:
-        current_quarter = 3
-    else:
-        current_quarter = 4
+    # Convert YYYY-QN format to "QN YYYY" format for backward compatibility
+    def format_quarter(q_str):
+        year, quarter = q_str.split('-')
+        return f"{quarter} {year}"
     
-    # Calculate previous quarter (most recent completed quarter)
-    if current_quarter == 1:
-        prev_quarter = 4
-        prev_year = current_year - 1
-    else:
-        prev_quarter = current_quarter - 1
-        prev_year = current_year
-    
-    # Format as strings
-    current_q_str = f"Q{current_quarter} {current_year}"
-    prev_q_str = f"Q{prev_quarter} {prev_year}"
+    # Extract years from the quarter strings
+    current_year = int(current_quarter_raw.split('-')[0])
+    previous_year = int(previous_quarter_raw.split('-')[0])
     
     return {
-        'current_quarter': current_q_str,
-        'previous_quarter': prev_q_str,
+        'current_quarter': format_quarter(current_quarter_raw),
+        'previous_quarter': format_quarter(previous_quarter_raw),
         'current_year': current_year,
-        'previous_year': prev_year
+        'previous_year': previous_year
     }
 
 
@@ -94,7 +87,9 @@ def generate_sec_filings(session: Session) -> None:
     
     # Generate prompts for SEC filings
     filing_prompts = []
-    quarters = ["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4"]
+    # Use dynamic quarters for SEC filings (last 4 quarters)
+    all_quarters = get_historical_quarters()
+    quarters = all_quarters[:4]  # Most recent 4 quarters for SEC filings
     
     for company in companies[:8]:  # Generate for first 8 companies
         ticker = company['TICKER']
@@ -198,9 +193,23 @@ def generate_earnings_transcripts(session: Session) -> None:
         events_by_ticker[ticker].append(event)
     
     transcript_prompts = []
-    quarters = ["2024-Q2", "2024-Q3", "2024-Q4"]  # Recent quarters with transcripts
+    # Use dynamic quarters based on current date - limit to last 3 quarters for transcripts
+    all_quarters = get_historical_quarters()
+    quarters = all_quarters[:3]  # Most recent 3 quarters for transcripts
     
-    for company in companies[:6]:  # Generate for 6 companies
+    # Strategic: Ensure Netflix is always included for earnings scenario
+    selected_companies = []
+    
+    # Always include Netflix if it exists
+    netflix_company = [c for c in companies if c['TICKER'] == 'NFLX']
+    if netflix_company:
+        selected_companies.extend(netflix_company)
+    
+    # Add other companies to reach 6 total
+    other_companies = [c for c in companies if c['TICKER'] != 'NFLX']
+    selected_companies.extend(other_companies[:6-len(selected_companies)])
+    
+    for company in selected_companies:
         ticker = company['TICKER']
         company_name = company['COMPANY_NAME']
         sector = company['SECTOR']

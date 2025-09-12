@@ -3,12 +3,18 @@
 
 import random
 import math
+import sys
+import os
 from datetime import datetime, timedelta
 from faker import Faker
 import pandas as pd
 from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col
+
+# Add the src directory to the path for relative imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from config import DemoConfig
+from utils.date_utils import get_historical_quarters, get_dynamic_date_range
 
 fake = Faker()
 
@@ -105,8 +111,8 @@ def generate_historical_stock_prices(session: Session) -> None:
     
     # Generate price data for each ticker
     all_price_data = []
-    start_date = datetime.strptime(DemoConfig.DATE_RANGE_START, "%Y-%m-%d")
-    end_date = datetime.strptime(DemoConfig.DATE_RANGE_END, "%Y-%m-%d")
+    # Use dynamic date range covering all historical quarters
+    start_date, end_date = get_dynamic_date_range()
     
     for ticker in DemoConfig.TICKER_LIST:
         print(f"     📊 Generating prices for {ticker}...")
@@ -188,7 +194,8 @@ def generate_consensus_estimates(session: Session) -> None:
     session.sql(create_table_sql).collect()
     
     estimates_data = []
-    quarters = ["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4"]
+    # Use all historical quarters for estimates (8 quarters by default)
+    quarters = get_historical_quarters()
     metrics = ["Revenue", "EPS", "Net Income"]
     providers = ["FactSet", "Bloomberg", "Refinitiv"]
     
@@ -297,8 +304,8 @@ def generate_client_data(session: Session) -> None:
     session.sql(create_trading_sql).collect()
     
     trading_data = []
-    start_date = datetime.strptime(DemoConfig.DATE_RANGE_START, "%Y-%m-%d")
-    end_date = datetime.strptime(DemoConfig.DATE_RANGE_END, "%Y-%m-%d")
+    # Use dynamic date range covering all historical quarters  
+    start_date, end_date = get_dynamic_date_range()
     
     for client in clients_data:
         client_id = client["CLIENT_ID"]
