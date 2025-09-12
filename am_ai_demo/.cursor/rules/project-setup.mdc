@@ -1,0 +1,412 @@
+---
+alwaysApply: true
+---
+
+# Snowcrest Asset Management (SAM) Demo - Project Setup Rules
+
+Project structure, configuration management, and setup procedures for the SAM AI demo.
+
+## Project Overview
+
+**Company**: Snowcrest Asset Management (SAM)  
+**Purpose**: Demonstrate Snowflake Intelligence capabilities for asset management customers  
+**Architecture**: Multi-asset investment management firm with 10 portfolios across growth, value, ESG, and thematic strategies
+
+## Project Structure
+
+```
+/
+├── .cursor/rules/              # Cursor AI development rules
+│   ├── agent-config.mdc       # Agent configuration guide
+│   ├── cortex-search.mdc      # Cortex Search creation guide
+│   ├── data-generation.mdc    # Enhanced data generation patterns
+│   ├── data_model_migration_plan.mdc # Migration plan documentation
+│   ├── project-setup.mdc      # Project setup and configuration
+│   ├── semantic-views.mdc     # Semantic view creation guide
+│   └── [other rules...]       # Additional development rules
+├── docs/                       # Documentation (auto-generated)
+│   ├── agents_setup.md        # Agent configuration instructions
+│   ├── data_model.md          # Data model documentation
+│   ├── demo_scenarios.md      # Demo conversation scripts
+│   └── runbooks.md            # Operational procedures
+├── python/                     # Python implementation
+│   ├── config.py              # Configuration constants (CAPS naming)
+│   ├── main.py                # CLI orchestrator
+│   ├── generate_structured.py # Enhanced structured data generation (SecurityID model)
+│   ├── generate_unstructured.py # Unstructured content generation (SecurityID integration)
+│   ├── build_ai.py            # AI components (semantic views, search services)
+│   └── extract_real_assets.py # Real asset data extraction from Marketplace
+├── data/                      # Real asset data storage
+│   ├── real_assets.csv        # Real asset data from Snowflake Marketplace
+│   └── real_market_data.csv   # Real OHLCV data from Snowflake Marketplace
+├── research/                  # Research documents and analysis
+│   └── [research files...]    # Industry research and model documentation
+└── README.md                  # Quick setup guide
+```
+
+## Configuration Management
+
+### Primary Configuration: `python/config.py`
+All configuration uses CAPS constants following workspace standards:
+
+```python
+# Connection and execution
+DEFAULT_CONNECTION_NAME = 'sfseeurope-mstellwall-aws-us-west3'
+RNG_SEED = 42
+
+# Data generation parameters
+YEARS_OF_HISTORY = 5
+MODEL_NAME = 'llama3.1-70b'
+
+# Enhanced data model settings
+USE_TRANSACTION_BASED_MODEL = True
+GENERATE_CORPORATE_HIERARCHIES = True
+ISSUER_HIERARCHY_DEPTH = 2
+
+# Transaction generation settings
+SYNTHETIC_TRANSACTION_MONTHS = 12
+TRANSACTION_TYPES = ['BUY', 'SELL', 'DIVIDEND', 'CORPORATE_ACTION']
+AVERAGE_MONTHLY_TRANSACTIONS_PER_SECURITY = 2.5
+
+# Provider configuration
+PROVIDERS = ['NSD', 'PLM']  # NorthStar Data, PolarMetrics
+PROVIDER_MIX = {'NSD': 0.5, 'PLM': 0.5}
+
+# Real asset integration
+USE_REAL_ASSETS_CSV = True
+REAL_ASSETS_CSV_PATH = './data/real_assets.csv'
+USE_REAL_MARKET_DATA = True
+REAL_MARKET_DATA_CSV_PATH = './data/real_market_data.csv'
+
+# Enhanced real asset to issuer mapping
+REAL_ASSET_ISSUER_MAPPING = {
+    'AAPL': {'legal_name': 'Apple Inc.', 'country': 'US', 'sector': 'Information Technology'},
+    'MSFT': {'legal_name': 'Microsoft Corporation', 'country': 'US', 'sector': 'Information Technology'},
+    # ... additional mappings for corporate hierarchy support
+}
+```
+
+### Connection Management
+- Uses system default `~/.snowflake/connections.toml`
+- Connection name configurable via CLI `--connection-name`
+- Default connection: `sfseeurope-mstellwall-aws-us-west3`
+
+### Warehouse Management
+- **Execution Warehouse**: `SAM_DEMO_EXECUTION_WH` (for data generation and code execution)
+- **Cortex Search Warehouse**: `SAM_DEMO_CORTEX_WH` (dedicated for Cortex Search services)
+- **Size**: `MEDIUM` for both warehouses (configurable in config.py)
+- **Auto-Management**: Both warehouses auto-suspend after 60 seconds, auto-resume when needed
+
+## CLI Interface
+
+### Main Command: `python/main.py`
+
+**Core Parameters**:
+- `--connection-name` (optional): Snowflake connection name
+- `--scenarios` (optional): Comma-separated list of scenarios to build
+- `--scope` (optional): `all|data|semantic|search` (default: `all`)
+- `--extract-real-assets` (optional): Extract real asset data from Marketplace
+- `--extract-real-market-data` (optional): Extract real market data (OHLCV) from Marketplace
+- `--test-mode` (optional): Use 10% data volumes for faster development testing
+
+**Examples**:
+```bash
+# Build everything with defaults
+python main.py
+
+# Build all scenarios (same as above)
+python main.py --scenarios all
+
+# Build specific scenarios
+python main.py --scenarios portfolio_copilot,research_copilot
+
+# Test mode: Build all scenarios with 10% data for faster development testing
+python main.py --test-mode
+
+# Extract real assets (requires Marketplace access)
+python main.py --extract-real-assets
+
+# Extract real market data (requires Marketplace access)
+python main.py --extract-real-market-data
+
+# Build only data layer
+python main.py --scope data
+```
+
+### Test Mode for Development
+**Purpose**: Faster builds during development and testing
+**Usage**: `--test-mode` flag
+**Data Reduction**: 10% of full data volumes (500 vs 5,000 securities, 205 vs 3,463 documents)
+**Use Cases**: Code development, testing changes, validating functionality
+**Performance**: Significantly faster build times while maintaining all functionality
+
+## Database Architecture
+
+**Database**: `SAM_DEMO`  
+**Schemas**:
+- `RAW`: External provider data simulation + raw unstructured documents
+- `CURATED`: Industry-standard dimension/fact model ready for analysis
+- `AI`: Semantic views and Cortex Search services
+
+### Enhanced Data Model (Industry Standard)
+```sql
+-- Core Dimension Tables
+DIM_ISSUER                    -- Corporate hierarchies and issuer relationships
+DIM_SECURITY                  -- Immutable SecurityID with cross-reference
+DIM_SECURITY_IDENTIFIER_XREF  -- Full symbology spine (TICKER, CUSIP, ISIN, FIGI)
+DIM_PORTFOLIO                 -- Enhanced portfolio information
+DIM_BENCHMARK                 -- Benchmark reference data
+
+-- Core Fact Tables
+FACT_TRANSACTION              -- Canonical transaction log (source of truth)
+FACT_POSITION_DAILY_ABOR      -- ABOR positions built from transactions
+FACT_MARKETDATA_TIMESERIES    -- Enhanced market data with real data integration
+
+-- Enhanced Document Integration
+{DOCUMENT_TYPE}_CORPUS        -- Documents linked via SecurityID and IssuerID
+```
+
+### Enhanced Capabilities
+- **Immutable SecurityID**: Corporate action resilience and temporal integrity
+- **Transaction Audit Trail**: Complete history for compliance and reconciliation
+- **Issuer Hierarchies**: Corporate structure and parent company analysis
+- **Enhanced Document Integration**: Stable SecurityID/IssuerID linkage
+- **Real Data Integration**: Authentic market data with synthetic fallback
+- **Industry-Standard Architecture**: Professional asset management data model
+
+## Development Phases and Progress Tracking
+
+### Current Implementation Status (Updated 2025-01-15)
+
+#### ✅ **Phase 1: Foundation Complete** (portfolio_copilot)
+**Status**: Fully implemented and operational
+- ✅ Enhanced data model with real asset integration (79,186 issuers, 500 securities)
+- ✅ Transaction-based holdings with major US stock prioritization
+- ✅ 3 Cortex Search services (broker_research, earnings_transcripts, press_releases)
+- ✅ 2 Semantic views (SAM_ANALYST_VIEW, SAM_RESEARCH_VIEW)
+- ✅ ESG scores with sector/regional differentiation
+- ✅ Factor exposures with sector-specific characteristics
+- ✅ Benchmark holdings with realistic index compositions
+- ✅ Real market data integration (4M+ records with real/synthetic blend)
+- ✅ Demo flow alignment (portfolio holdings match research coverage)
+
+#### 🎯 **Phase 2: Research & Analytics** (Ready for Implementation)
+**Target**: `research_copilot`, `thematic_macro_advisor`
+**Dependencies**: ✅ All foundation components ready
+- **research_copilot**: Uses existing broker research, earnings, and fundamentals data
+- **thematic_macro_advisor**: Uses existing broker research, press releases, and macro data
+
+#### 🔄 **Phase 3: Risk & Compliance** (ESG/Policy Data Required)
+**Target**: `esg_guardian`, `compliance_advisor`
+**New Requirements**: 
+- Document types: `ngo_reports`, `engagement_notes`, `policy_docs`
+- Enhanced ESG scoring with controversy tracking
+- Compliance rule engine with violation detection
+
+#### 🔄 **Phase 4: Client & Quantitative** (Sales/Philosophy Data Required)
+**Target**: `sales_advisor`, `quant_analyst`
+**New Requirements**:
+- Document types: `sales_templates`, `philosophy_docs`, `performance_attribution`
+- Client presentation templates
+- Quantitative model explanations
+
+### Available Scenarios by Implementation Status
+
+```python
+SCENARIO_STATUS = {
+    # Phase 1: Fully Implemented
+    'portfolio_copilot': {
+        'status': 'IMPLEMENTED',
+        'components': ['semantic_views', 'search_services', 'real_assets', 'transactions', 'esg', 'factors'],
+        'agent_types': ['multi_tool_hybrid'],
+        'last_tested': '2025-01-15'
+    },
+    
+    # Phase 2: Ready for Implementation
+    'research_copilot': {
+        'status': 'READY',
+        'dependencies': ['broker_research', 'earnings_transcripts', 'fundamentals'],
+        'agent_types': ['search_focused', 'research_analyst'],
+        'estimated_effort': '1-2 days'
+    },
+    'thematic_macro_advisor': {
+        'status': 'READY', 
+        'dependencies': ['broker_research', 'press_releases', 'macro_data'],
+        'agent_types': ['multi_search', 'thematic_analyst'],
+        'estimated_effort': '1-2 days'
+    },
+    
+    # Phase 3: Requires New Data
+    'esg_guardian': {
+        'status': 'REQUIRES_DATA',
+        'new_requirements': ['ngo_reports', 'engagement_notes', 'policy_docs'],
+        'agent_types': ['compliance_focused', 'esg_analyst'],
+        'estimated_effort': '3-5 days'
+    },
+    'compliance_advisor': {
+        'status': 'DEPENDS_ON_ESG',
+        'dependencies': ['esg_guardian_completion'],
+        'agent_types': ['compliance_engine', 'rule_validator'],
+        'estimated_effort': '2-3 days'
+    },
+    
+    # Phase 4: Requires Sales/Philosophy Data
+    'sales_advisor': {
+        'status': 'REQUIRES_DATA',
+        'new_requirements': ['sales_templates', 'philosophy_docs'],
+        'agent_types': ['client_focused', 'presentation_builder'],
+        'estimated_effort': '2-4 days'
+    },
+    'quant_analyst': {
+        'status': 'READY_WITH_ENHANCEMENTS',
+        'dependencies': ['factors', 'performance_attribution'],
+        'enhancements_needed': ['attribution_models', 'risk_decomposition'],
+        'agent_types': ['quantitative_analyst', 'model_explainer'],
+        'estimated_effort': '2-3 days'
+    }
+}
+```
+
+### Next Development Priorities
+
+#### **Immediate (Phase 2 - Week 1)**
+1. **research_copilot** - Leverage existing research data for pure research agent
+2. **thematic_macro_advisor** - Focus on thematic investment strategies
+
+#### **Short-term (Phase 3 - Weeks 2-3)**  
+1. **ESG document generation** - Create NGO reports, engagement notes, policy docs
+2. **esg_guardian** - ESG-focused agent with controversy monitoring
+3. **compliance_advisor** - Build on ESG foundation
+
+#### **Medium-term (Phase 4 - Weeks 4-6)**
+1. **Sales template generation** - Client presentation materials
+2. **sales_advisor** - Client-facing advisory agent
+3. **quant_analyst enhancements** - Advanced attribution models
+
+## Prerequisites
+
+### Required Setup
+1. **Snowflake Account**: With Cortex features enabled and cross-region access
+2. **Connection Configuration**: `~/.snowflake/connections.toml` properly configured
+3. **Python Environment**: `snowflake-snowpark-python` installed
+
+### Connection Configuration Template
+```toml
+[connections.sfseeurope-mstellwall-aws-us-west3]
+account = "your-account"
+user = "your-username"
+password = "your-password"
+warehouse = "your-warehouse"
+database = "SAM_DEMO"
+schema = "CURATED"
+```
+
+## Naming Standards and Reserved Keywords
+
+### Reserved Keyword Compliance (VALIDATED)
+Following [Snowflake reserved keywords](https://docs.snowflake.com/en/sql-reference/reserved-keywords):
+
+**✅ All Object Names Verified Safe:**
+- **Table Names**: DIM_SECURITY, DIM_ISSUER, FACT_POSITION_DAILY_ABOR, FACT_TRANSACTION, etc.
+- **Column Names**: SecurityID, IssuerID, PRIMARYTICKER, LEGALNAME, GICS_SECTOR, etc.
+- **Warehouse Names**: SAM_DEMO_EXECUTION_WH, SAM_DEMO_CORTEX_WH
+- **AI Objects**: SAM_ANALYST_VIEW, SAM_BROKER_RESEARCH, etc.
+
+**Naming Conventions Used:**
+- Underscore separation (PORTFOLIO_HOLDINGS not PORTFOLIO-HOLDINGS)
+- Descriptive prefixes (SAM_DEMO_, SAM_)
+- No reserved words as primary identifiers
+- Consistent casing (UPPER_CASE for database objects)
+
+### Reserved Keywords to Avoid
+Critical keywords that cause issues:
+- **Table/Column context**: TABLE, COLUMN, VIEW, SCHEMA, DATABASE
+- **Query context**: SELECT, FROM, WHERE, ORDER, GROUP, SET
+- **Expression context**: CASE, WHEN, TRUE, FALSE, NULL
+- **Join context**: JOIN, LEFT, RIGHT, INNER, OUTER, CROSS
+
+## Error Handling Standards
+
+### Basic Error Management
+- Try/catch blocks for all Snowflake operations
+- Connection failure handling with clear error messages
+- Missing data graceful handling (log warnings, continue processing)
+- Validation checks before creating dependent objects
+
+### Data Quality Checks
+- Portfolio weights sum to 100% (±0.1% tolerance)
+- Transaction log balances to position snapshots
+- Security identifier cross-reference integrity
+- Issuer hierarchy relationships valid
+- No negative prices or market values
+- Date ranges are consistent and logical
+- All foreign key relationships exist
+
+## Validation Standards
+
+### Demo Readiness Checklist
+- [ ] All enhanced foundation tables created successfully (DIM_SECURITY, FACT_TRANSACTION, etc.)
+- [ ] Security identifier cross-reference populated and validated
+- [ ] Transaction log balances to ABOR positions
+- [ ] Issuer hierarchies established with corporate relationships
+- [ ] Semantic view responds to test queries with issuer-level support
+- [ ] Cortex Search services return relevant results with SecurityID/IssuerID attributes
+- [ ] Enhanced data quality checks pass
+- [ ] Performance acceptable for demo purposes
+
+### Required Test Queries
+```sql
+-- Test enhanced semantic view with issuer support
+DESCRIBE SEMANTIC VIEW SAM_DEMO.AI.SAM_ANALYST_VIEW;
+
+-- Test basic portfolio analytics
+SELECT * FROM SEMANTIC_VIEW(
+    SAM_DEMO.AI.SAM_ANALYST_VIEW
+    METRICS TOTAL_MARKET_VALUE, HOLDING_COUNT
+    DIMENSIONS PORTFOLIONAME, DESCRIPTION
+) LIMIT 5;
+
+-- Test issuer-level analysis (enhanced capability)
+SELECT * FROM SEMANTIC_VIEW(
+    SAM_DEMO.AI.SAM_ANALYST_VIEW
+    METRICS ISSUER_EXPOSURE
+    DIMENSIONS LEGALNAME, GICS_SECTOR
+) LIMIT 5;
+
+-- Test enhanced search services with SecurityID attributes
+SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+    'SAM_DEMO.AI.SAM_BROKER_RESEARCH',
+    '{"query": "technology investment", "limit": 2}'
+);
+
+-- Validate transaction-based model integrity
+SELECT 
+    COUNT(*) as transaction_count,
+    COUNT(DISTINCT PortfolioID) as portfolios_with_transactions,
+    COUNT(DISTINCT SecurityID) as securities_with_transactions
+FROM SAM_DEMO.CURATED.FACT_TRANSACTION;
+```
+
+## Business Configuration Standards
+
+### Benchmarks and Portfolio Rules
+- **Benchmarks**: S&P 500, MSCI ACWI, Nasdaq 100
+- **ESG Rules Apply To**: SAM ESG Leaders Global Equity; SAM Renewable & Climate Solutions
+- **Compliance Rules**: 
+  - Concentration: 7% cap, 6.5% warning threshold
+  - Fixed Income: ≥75% Investment Grade, ≤5% CCC & below
+  - ESG Floor: Minimum BBB rating for ESG-labelled portfolios
+
+### Determinism and Analytics Standards
+- **RNG Seed**: `RNG_SEED = 42` (configurable for consistent regeneration)
+- **Base Currency**: USD for all analytics and reports
+- **FX Hedging**: Fully hedged to USD for portfolios and benchmarks
+- **Trading Calendar**: UTC with Mon-Fri business days
+- **Returns Frequency**: Monthly for 5-year comparisons
+- **Language**: UK English throughout generated content and agent responses
+
+### Data Generation Defaults
+- **Document Coverage**: Issuer-level for NGO/engagement, security-level for research
+- **Identifier Management**: Deterministic hashing for stable IDs across runs
+- **Overwrite Policy**: `CREATE OR REPLACE` for SQL objects, overwrite mode for DataFrames
+- **Naming Standards**: Uppercase, unquoted identifiers compatible with Snowflake rules

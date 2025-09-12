@@ -1,0 +1,538 @@
+---
+alwaysApply: true
+---
+
+# SAM Demo - Agent Configuration Guide
+
+Complete step-by-step guide for configuring Snowflake Intelligence agents with proper tool setup, instructions, and validation procedures. This guide is self-contained and provides all patterns needed to create new agents without external context.
+
+## Overview
+
+This guide provides the exact patterns and procedures for configuring agents in Snowflake Intelligence, including tool configurations, instruction templates, and testing approaches that work reliably with the SAM demo data model.
+
+**Agent Types by Use Case:**
+- **Multi-Tool Hybrid**: Portfolio Copilot (multiple Cortex Analyst + Search tools)
+- **Search-Focused**: Research Copilot (document synthesis and analysis)
+- **Analytics-Focused**: Quant Analyst (single/multiple Cortex Analyst tools)  
+- **Compliance-Focused**: ESG Guardian (policy search + ESG analytics)
+
+**Current Implementation Status** (see @project-setup.mdc for details):
+- ✅ **portfolio_copilot**: Fully implemented and tested
+- 🎯 **research_copilot, thematic_macro_advisor**: Ready for implementation (Phase 2)
+- 🔄 **esg_guardian, compliance_advisor**: Requires new document types (Phase 3)
+- 🔄 **sales_advisor, quant_analyst**: Requires enhancements (Phase 4)
+
+## Step 1: Prerequisites and Preparation
+
+### 1.1 Verify AI Components
+Before configuring agents, verify all required AI components exist:
+
+```python
+def verify_ai_components_for_agent(session: Session, required_services: List[str]):
+    """Verify semantic view and search services exist"""
+    
+    # Check semantic view exists
+    try:
+        session.sql("DESCRIBE SEMANTIC VIEW SAM_DEMO.AI.SAM_ANALYST_VIEW").collect()
+        print("✅ Semantic view: SAM_ANALYST_VIEW")
+    except Exception as e:
+        print(f"❌ Semantic view missing: {e}")
+        return False
+    
+    # Check search services exist
+    services = session.sql("SHOW CORTEX SEARCH SERVICES IN SAM_DEMO.AI").collect()
+    existing_services = [service['name'] for service in services]
+    
+    for required_service in required_services:
+        if required_service in existing_services:
+            print(f"✅ Search service: {required_service}")
+        else:
+            print(f"❌ Missing search service: {required_service}")
+            return False
+    
+    return True
+
+# Example usage for Portfolio Copilot:
+required_services = ['SAM_BROKER_RESEARCH', 'SAM_EARNINGS_TRANSCRIPTS', 'SAM_PRESS_RELEASES']
+verify_ai_components_for_agent(session, required_services)
+```
+
+### 1.2 Validate Data Readiness
+Ensure data is ready for agent testing:
+
+```python
+def validate_agent_data_readiness(session: Session):
+    """Validate data quality and completeness for agents"""
+    
+    # Check portfolio data
+    portfolios = session.sql("SELECT PORTFOLIONAME FROM SAM_DEMO.CURATED.DIM_PORTFOLIO").collect()
+    print(f"✅ Available portfolios: {len(portfolios)}")
+    
+    # Check holdings data
+    holdings_count = session.sql("""
+        SELECT COUNT(*) as count 
+        FROM SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR 
+        WHERE HoldingDate = (SELECT MAX(HoldingDate) FROM SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR)
+    """).collect()[0]['COUNT']
+    print(f"✅ Current holdings: {holdings_count} positions")
+    
+    # Check document corpus
+    for corpus in ['BROKER_RESEARCH_CORPUS', 'EARNINGS_TRANSCRIPTS_CORPUS', 'PRESS_RELEASES_CORPUS']:
+        doc_count = session.sql(f"SELECT COUNT(*) as count FROM SAM_DEMO.CURATED.{corpus}").collect()[0]['COUNT']
+        print(f"✅ {corpus}: {doc_count} documents")
+    
+    return True
+```
+
+## Step 2: Agent Configuration
+
+### 2.1 Agent Setup Templates
+
+**Multi-Tool Agent (Mixed Cortex Analyst + Search):**
+```yaml
+Agent Name: {agent_name}
+Display Name: {Agent Display Name}
+Description: {Business context and capabilities}
+Orchestration Model: Claude 4
+
+Tools:
+  - {analyst_tool_1} (Cortex Analyst)              # e.g., quantitative_analyzer
+  - {analyst_tool_2} (Cortex Analyst)              # e.g., risk_analyzer (optional)
+  - search_{document_type_1} (Cortex Search)       # e.g., search_broker_research
+  - search_{document_type_2} (Cortex Search)       # e.g., search_earnings_transcripts
+
+Planning Instructions: {Tool selection logic for multiple analysts and document search}
+Response Instructions: {Tone, format, and output guidelines}
+```
+
+**Multiple Cortex Analyst Agent (Pure Analytics):**
+```yaml
+Agent Name: {agent_name}
+Display Name: {Agent Display Name}
+Description: {Comprehensive quantitative analysis across multiple domains}
+Orchestration Model: Claude 4
+
+Tools:
+  - {analyst_tool_1} (Cortex Analyst)              # e.g., portfolio_analyzer
+  - {analyst_tool_2} (Cortex Analyst)              # e.g., risk_analyzer
+  - {analyst_tool_3} (Cortex Analyst)              # e.g., performance_analyzer
+
+Planning Instructions: {Logic for selecting appropriate analyst tool based on query type}
+Response Instructions: {Data-focused tone and formatting guidelines}
+```
+
+**Single Cortex Analyst Agent (Focused Analytics):**
+```yaml
+Agent Name: {agent_name}
+Display Name: {Agent Display Name}
+Description: {Specific analytical domain focus}
+Orchestration Model: Claude 4
+
+Tools:
+  - {analyst_tool_name} (Cortex Analyst)           # e.g., quantitative_analyzer, risk_analyzer
+
+Planning Instructions: {Logic for single-domain quantitative analysis}
+Response Instructions: {Domain-focused tone and formatting guidelines}
+```
+
+**Cortex Search Only Agent (Document Research):**
+```yaml
+Agent Name: {agent_name}
+Display Name: {Agent Display Name}
+Description: {Document search and qualitative research capabilities}
+Orchestration Model: Claude 4
+
+Tools:
+  - search_{document_type_1} (Cortex Search)       # e.g., search_policies
+  - search_{document_type_2} (Cortex Search)       # e.g., search_engagement_notes
+
+Planning Instructions: {Logic for document search and content synthesis}
+Response Instructions: {Research-focused tone with proper citations}
+```
+
+### 2.2 Tool Configuration Patterns
+
+**Cortex Analyst Tool Pattern (Optional):**
+```yaml
+Tool Name: {analyst_tool_name}                    # e.g., quantitative_analyzer, risk_analyzer
+Type: Cortex Analyst
+Semantic View: SAM_DEMO.AI.{SEMANTIC_VIEW_NAME}   # e.g., SAM_ANALYST_VIEW, SAM_RISK_VIEW
+Description: "Use this tool for {specific_analysis_type}. It can {capabilities_list}. Use for questions about {when_to_use_guidance}."
+
+# Example: Portfolio Analytics
+Tool Name: quantitative_analyzer
+Type: Cortex Analyst
+Semantic View: SAM_DEMO.AI.SAM_ANALYST_VIEW
+Description: "Use this tool for quantitative analysis of portfolio data, fund holdings, market metrics, performance calculations, and financial ratios. It can calculate exposures, generate lists of securities, perform aggregations, and create charts. Use for questions about numbers, percentages, rankings, comparisons, visualizations, and fund/portfolio analytics."
+```
+
+**Cortex Search Tool Pattern (Optional):**
+```yaml
+Tool Name: search_{document_type}                 # e.g., search_broker_research, search_policies
+Type: Cortex Search
+Service: SAM_DEMO.AI.SAM_{DOCUMENT_TYPE}         # e.g., SAM_BROKER_RESEARCH, SAM_POLICY_DOCS
+ID Column: DOCUMENT_ID
+Title Column: DOCUMENT_TITLE
+Description: "Search {document_type} for {specific_use_case}. Use for {when_to_use_guidance}."
+
+# Example: Document Search
+Tool Name: search_broker_research
+Type: Cortex Search
+Service: SAM_DEMO.AI.SAM_BROKER_RESEARCH
+ID Column: DOCUMENT_ID
+Title Column: DOCUMENT_TITLE
+Description: "Search broker research reports for investment opinions, ratings, and market commentary. Use for questions about analyst views, price targets, and investment recommendations."
+```
+
+### 2.3 Complete Agent Example (Portfolio Copilot)
+```yaml
+Agent Name: portfolio_copilot
+Display Name: Portfolio Co-Pilot
+Description: Expert AI assistant for portfolio managers providing instant access to portfolio analytics, holdings analysis, benchmark comparisons, and supporting research. Helps portfolio managers make informed investment decisions by combining quantitative portfolio data with qualitative market intelligence.
+
+Tools:
+  1. quantitative_analyzer (Cortex Analyst)
+     - Semantic View: SAM_DEMO.AI.SAM_ANALYST_VIEW
+     - Description: "Use for portfolio analytics, holdings analysis, sector breakdowns, performance metrics, and quantitative calculations"
+     
+  2. search_broker_research (Cortex Search)
+     - Service: SAM_DEMO.AI.SAM_BROKER_RESEARCH
+     - ID Column: DOCUMENT_ID
+     - Title Column: DOCUMENT_TITLE
+     - Description: "Search broker research reports for investment opinions, ratings, and market commentary"
+     
+  3. search_earnings_transcripts (Cortex Search)
+     - Service: SAM_DEMO.AI.SAM_EARNINGS_TRANSCRIPTS
+     - ID Column: DOCUMENT_ID
+     - Title Column: DOCUMENT_TITLE
+     - Description: "Search earnings call transcripts for company guidance and financial updates"
+     
+  4. search_press_releases (Cortex Search)
+     - Service: SAM_DEMO.AI.SAM_PRESS_RELEASES
+     - ID Column: DOCUMENT_ID
+     - Title Column: DOCUMENT_TITLE
+     - Description: "Search company press releases for corporate developments and announcements"
+```
+
+## Step 3: Agent Instructions
+
+### 3.1 Planning Instructions Templates
+
+**Multi-Tool Agent (Multiple Analysts + Search):**
+```
+1. Analyze the user's query to identify distinct sub-questions and analytical domains
+2. Classify each sub-question by type:
+   - QUANTITATIVE: Numbers, calculations, lists, rankings, exposures, weights, performance metrics, charts
+   - QUALITATIVE: Summaries, opinions, context, explanations, "why" questions
+3. For quantitative questions: Choose appropriate analyst tool based on domain:
+   - {Analyst tool 1}: {Domain and use cases}
+   - {Analyst tool 2}: {Domain and use cases}
+   - {Analyst tool 3}: {Domain and use cases}
+4. For qualitative questions: Choose appropriate search tool based on information type:
+   - {Document type 1 guidance}
+   - {Document type 2 guidance}
+   - {Document type 3 guidance}
+5. For mixed questions: Use appropriate analyst tool first, then search tools with results as context
+6. Always synthesize multiple tool outputs into coherent response
+7. If user requests charts/visualizations, ensure appropriate analyst tool generates them
+```
+
+**Multiple Cortex Analyst Agent:**
+```
+1. Analyze the user's query to identify data requirements and analytical domains
+2. Select appropriate analyst tool(s) based on query type:
+   - {Analyst tool 1}: {Specific domain and capabilities}
+   - {Analyst tool 2}: {Specific domain and capabilities}
+   - {Analyst tool 3}: {Specific domain and capabilities}
+3. For queries spanning multiple domains, use multiple analyst tools systematically
+4. Generate charts and visualizations when requested or when they enhance understanding
+5. Provide comprehensive quantitative insights with proper context and business implications
+6. If data is unavailable in one domain, try alternative analyst tools or suggest alternatives
+```
+
+**Single Cortex Analyst Agent:**
+```
+1. Analyze the user's query to identify data requirements and analytical approach
+2. Use {analyst_tool_name} tool for all data analysis, calculations, and insights
+3. For complex queries, break into logical sub-questions and analyze systematically
+4. Generate charts and visualizations when requested or when they enhance understanding
+5. Provide quantitative insights with proper context and business implications
+6. If data is unavailable, clearly state limitations and suggest alternative approaches
+```
+
+**Cortex Search Only Agent:**
+```
+1. Analyze the user's query to identify relevant document types and search terms
+2. Choose appropriate search tool(s) based on information type:
+   - {Document type 1 guidance}
+   - {Document type 2 guidance}
+   - {Document type 3 guidance}
+3. For multi-faceted queries, search across multiple document types systematically
+4. Synthesize findings from different document sources into coherent response
+5. Always provide proper citations with document type, title, and date
+6. If no relevant documents found, suggest alternative search terms or document types
+```
+
+### 3.2 Response Instructions Template
+```
+1. You are {Agent Role}, an expert assistant for {target_users}
+2. Tone: {Professional style appropriate for persona}
+3. Format numerical data clearly using tables for lists/comparisons
+4. Always cite document sources with type and date (e.g., "According to {source} from {date}...")
+5. For charts: Include clear titles describing what is shown
+6. If information unavailable: State clearly and suggest alternatives
+7. Focus on actionable insights and {domain-specific} implications
+8. Use UK English spelling and terminology
+```
+
+## Step 4: Agent Testing and Validation
+
+### 4.1 Systematic Testing Approach
+**Testing Strategy:**
+1. **Component Testing**: Verify each tool works independently
+2. **Integration Testing**: Test tool combinations for mixed queries
+3. **Business Scenario Testing**: Test with actual demo conversation flows
+4. **Edge Case Testing**: Test with missing data, complex queries, error conditions
+
+### 4.2 Component Testing Pattern
+```python
+def test_agent_components(session: Session, agent_name: str, tools: List[str]):
+    """Test each agent tool independently based on tool type"""
+    
+    # Test Cortex Analyst tools (if any)
+    analyst_tools = [tool for tool in tools if not tool.startswith('search_')]
+    for analyst_tool in analyst_tools:
+        try:
+            # Test with basic semantic view query
+            result = session.sql("""
+                SELECT * FROM SEMANTIC_VIEW(
+                    SAM_DEMO.AI.SAM_ANALYST_VIEW
+                    METRICS TOTAL_MARKET_VALUE
+                    DIMENSIONS PORTFOLIONAME
+                ) LIMIT 5
+            """).collect()
+            print(f"✅ Cortex Analyst tool test passed: {analyst_tool} ({len(result)} results)")
+        except Exception as e:
+            print(f"❌ Cortex Analyst tool test failed for {analyst_tool}: {e}")
+    
+    # Test Cortex Search tools (if any)
+    search_tools = [tool for tool in tools if tool.startswith('search_')]
+    for search_tool in search_tools:
+        service_name = f"SAM_{search_tool.replace('search_', '').upper()}"
+        try:
+            result = session.sql(f"""
+                SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+                    'SAM_DEMO.AI.{service_name}',
+                    '{{"query": "test", "limit": 1}}'
+                )
+            """).collect()
+            print(f"✅ Cortex Search tool test passed: {search_tool}")
+        except Exception as e:
+            print(f"❌ Cortex Search tool test failed for {search_tool}: {e}")
+    
+    # Validate agent has at least one working tool
+    if not analyst_tools and not search_tools:
+        print(f"❌ Agent {agent_name} has no valid tools configured")
+        return False
+    
+    return True
+```
+
+### 4.3 Business Scenario Testing
+Test with queries appropriate for your agent's tool configuration:
+
+**Testing Strategy by Agent Type:**
+
+**Multi-Tool Agents (Multiple Analysts + Search):**
+- Test quantitative queries that use different Cortex Analyst tools
+- Test qualitative queries that use Cortex Search tools
+- Test mixed queries that require both analyst and search tools
+- Test queries that span multiple analytical domains
+- Verify tool selection logic works correctly for different domains
+
+**Multiple Cortex Analyst Agents:**
+- Test queries appropriate for each analyst tool domain
+- Test domain-specific analytical scenarios
+- Test queries that require multiple analyst perspectives
+- Test chart and visualization generation across tools
+- Verify all business metrics are accessible in appropriate tools
+
+**Single Cortex Analyst Agents:**
+- Test data analysis and calculation queries for the specific domain
+- Test chart and visualization generation
+- Test complex analytical scenarios within the domain
+- Verify all relevant business metrics are accessible
+
+**Cortex Search Only Agents:**
+- Test document search across all configured document types
+- Test synthesis of information from multiple sources
+- Test citation and source attribution
+- Verify search relevance and coverage
+
+**Example Test Query Patterns:**
+```python
+# Portfolio analytics (Cortex Analyst)
+"What are my top 10 holdings in the SAM Global Thematic Growth fund?"
+"Show me sector allocation across all portfolios"
+"Calculate concentration warnings above 6.5%"
+
+# Document research (Cortex Search)  
+"What is the latest research on Apple and Microsoft?"
+"Find ESG controversies in my portfolio companies"
+"What does our policy say about environmental violations?"
+
+# Mixed queries (Multi-tool agents)
+"Show me top holdings and their latest research ratings"
+"Analyze sector exposure and find supporting research themes"
+```
+
+### 4.4 Validation Checklist
+- [ ] All required AI components exist (semantic views and/or search services)
+- [ ] Data quality validated (appropriate for agent's tool types)
+- [ ] Each configured tool works independently
+- [ ] Tool combinations work correctly (for multi-tool agents)
+- [ ] Business scenario queries return expected results
+- [ ] Error handling works appropriately
+- [ ] Performance is acceptable for demo use
+- [ ] Agent responds appropriately when tools have no data
+
+## Step 5: Troubleshooting
+
+For comprehensive troubleshooting of agent setup, query issues, performance problems, and live demo testing issues, see @troubleshooting.mdc.
+
+**Quick Reference for Common Issues:**
+- **Agent not responding**: Verify AI components exist (semantic views, search services)
+- **Tool not found**: Check service names and column configurations match exactly
+- **No search results**: Verify document corpus exists and has content
+- **Portfolio not found**: Use full names with "SAM" prefix in test queries
+- **Performance issues**: Check warehouse size and optimize query patterns
+
+**Critical Demo Testing Queries:**
+```
+"What are my top 10 holdings in the SAM Global Thematic Growth fund?"
+"What is the latest research on Apple, Microsoft, and NVIDIA?"
+"Show me technology sector allocation across all portfolios"
+```
+
+## Step 6: Agent Archetypes and Patterns
+
+### 6.1 Agent Archetypes
+
+**Multi-Domain Analytics Agents (Multiple Cortex Analysts):**
+- **Use Cases**: Comprehensive analysis across different data domains (portfolio + risk + performance)
+- **Tool Configuration**: Multiple Cortex Analyst tools with different semantic views
+- **Planning Focus**: Domain-specific tool selection, cross-domain synthesis
+- **Examples**: Chief investment officer agent, comprehensive portfolio manager, multi-domain analyst
+
+**Single-Domain Analytics Agents (Single Cortex Analyst):**
+- **Use Cases**: Focused analysis within specific domain (portfolio analysis, risk monitoring, performance attribution)
+- **Tool Configuration**: Single Cortex Analyst tool with domain-specific semantic view
+- **Planning Focus**: Deep analytical capabilities within domain, visualization generation
+- **Examples**: Portfolio analyzer, risk monitor, performance tracker, ESG scorer
+
+**Research-Focused Agents (Cortex Search Only):**
+- **Use Cases**: Document synthesis, policy research, literature review, compliance checking
+- **Tool Configuration**: Multiple Cortex Search tools for different document types
+- **Planning Focus**: Document search, content synthesis, citation management
+- **Examples**: Policy researcher, document librarian, compliance checker, ESG researcher
+
+**Hybrid Agents (Multiple Analysts + Search):**
+- **Use Cases**: Investment decisions, comprehensive analysis, client advisory, multi-domain insights
+- **Tool Configuration**: Multiple Cortex Analyst tools + multiple Cortex Search tools
+- **Planning Focus**: Complex tool selection logic, data-to-document workflows, cross-domain synthesis
+- **Examples**: Portfolio copilot, investment advisor, ESG guardian, chief risk officer agent
+
+### 6.2 Configuration Best Practices
+
+**Tool Ordering:**
+- List most frequently used tools first
+- Group similar tools together (all search tools together)
+- Consider tool execution time in ordering
+
+**Description Clarity:**
+- Clearly define when to use each tool
+- Avoid overlapping use cases between tools
+- Include specific examples of appropriate queries
+
+**Planning Instructions:**
+- Provide explicit tool selection logic
+- Handle edge cases (no data, multiple tools applicable)
+- Include synthesis guidance for multi-tool responses
+
+## Agent Implementation Roadmap
+
+### Ready for Immediate Implementation (Phase 2)
+
+#### research_copilot
+**Purpose**: Document research and analysis agent
+**Dependencies**: ✅ All required components exist
+- Uses: SAM_BROKER_RESEARCH, SAM_EARNINGS_TRANSCRIPTS, SAM_RESEARCH_VIEW
+- Agent Type: Search-focused with semantic analysis
+- Implementation Time: 1-2 days
+
+#### thematic_macro_advisor  
+**Purpose**: Thematic investment strategy advisor
+**Dependencies**: ✅ All required components exist
+- Uses: SAM_BROKER_RESEARCH, SAM_PRESS_RELEASES, SAM_ANALYST_VIEW
+- Agent Type: Multi-search with macro focus
+- Implementation Time: 1-2 days
+
+### Requires New Components (Phase 3-4)
+
+#### esg_guardian
+**Status**: Requires new document types
+**New Requirements**: 
+- Document types: ngo_reports, engagement_notes, policy_docs
+- Search services: SAM_NGO_REPORTS, SAM_ENGAGEMENT_NOTES, SAM_POLICY_DOCS
+- Enhanced ESG semantic view with controversy tracking
+**Implementation**: Follow @development-patterns.mdc for document generation
+
+#### sales_advisor
+**Status**: Requires sales templates
+**New Requirements**:
+- Document types: sales_templates, philosophy_docs  
+- Search services: SAM_SALES_TEMPLATES, SAM_PHILOSOPHY_DOCS
+- Client presentation builder capabilities
+**Implementation**: Follow @development-patterns.mdc for document generation
+
+### Implementation Steps for New Agents
+
+1. **Verify Dependencies** (Step 1.1 verification pattern)
+2. **Choose Agent Archetype** (Section 6.1 patterns)
+3. **Configure Tools** (Section 2.2-2.3 patterns)
+4. **Write Instructions** (Section 3.1-3.2 templates)
+5. **Test Systematically** (Section 4.1-4.3 validation)
+6. **Document Results** (Section 5 troubleshooting patterns)
+
+### Testing Patterns by Agent Type
+
+**Search-Focused Agents**:
+```
+"Find research on renewable energy trends"
+"What are analysts saying about ESG regulations?"
+"Summarize earnings guidance for technology companies"
+```
+
+**Analytics-Focused Agents**:
+```  
+"Show factor exposure breakdown for growth portfolios"
+"Calculate risk attribution for defensive strategies"
+"Compare performance metrics across asset classes"
+```
+
+**Multi-Tool Hybrid Agents**:
+```
+"Analyze portfolio ESG scores and find supporting research"
+"Show sector allocation with latest analyst recommendations"
+"Risk assessment with regulatory compliance check"
+```
+
+## Summary
+
+This guide provides a complete workflow for configuring Snowflake Intelligence agents that work reliably with the SAM demo. Follow the steps sequentially for best results, and refer back to the testing patterns and troubleshooting sections as needed.
+
+**Next Steps**: See @development-patterns.mdc for detailed implementation templates when creating new agents or extending existing ones.
+
+**Complete Documentation**: 
+- Agent Configurations: See `docs/agents_setup.md` for all agent tool setups and instructions
+- Demo Scenarios: See `docs/demo_scenarios.md` for complete demo conversation flows

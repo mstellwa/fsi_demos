@@ -1,0 +1,361 @@
+---
+alwaysApply: true
+---
+
+# SAM Demo - Semantic Views Creation Guide
+
+Complete step-by-step guide for creating and testing SEMANTIC VIEWs for Cortex Analyst.
+
+**Related Rules**: 
+- @agent-config.mdc - For agent configuration using semantic views
+- @data-generation.mdc - For underlying data tables
+- @troubleshooting.mdc - For semantic view troubleshooting
+
+## Overview
+
+Semantic views are required for Cortex Analyst to understand your data model. This guide provides the exact syntax patterns, validation procedures, and troubleshooting steps needed to create working semantic views.
+
+## Step 1: Prerequisites and Preparation
+
+### 1.1 Verify Table Structure
+Before creating a semantic view, verify all required tables exist and check their exact column names:
+
+```python
+# Check table existence and column names
+def verify_tables_for_semantic_view(session: Session, tables: List[str]):
+    """Verify all required tables exist and get column names"""
+    for table in tables:
+        try:
+            # Test table access
+            session.sql(f"SELECT 1 FROM {table} LIMIT 1").collect()
+            
+            # Get exact column names (case-sensitive)
+            columns = session.sql(f"DESCRIBE TABLE {table}").collect()
+            print(f"✅ Table {table} columns:")
+            for row in columns:
+                print(f"   - {row['name']} ({row['type']})")
+        except Exception as e:
+            print(f"❌ Table {table} not accessible: {e}")
+            return False
+    return True
+
+# Example usage:
+required_tables = [
+    'SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR',
+    'SAM_DEMO.CURATED.DIM_PORTFOLIO', 
+    'SAM_DEMO.CURATED.DIM_SECURITY',
+    'SAM_DEMO.CURATED.DIM_ISSUER'
+]
+verify_tables_for_semantic_view(session, required_tables)
+```
+
+### 1.2 Plan Your Synonyms (CRITICAL)
+Plan all synonyms upfront to avoid duplicates:
+
+```python
+def validate_synonym_uniqueness(dimensions_and_metrics: dict):
+    """Validate that no synonyms are duplicated across dimensions and metrics"""
+    all_synonyms = set()
+    duplicates = set()
+    
+    for item_name, synonyms in dimensions_and_metrics.items():
+        for synonym in synonyms:
+            if synonym in all_synonyms:
+                duplicates.add(synonym)
+            all_synonyms.add(synonym)
+    
+    if duplicates:
+        print(f"❌ Duplicate synonyms found: {duplicates}")
+        return False
+    print("✅ All synonyms are unique")
+    return True
+
+# Plan your synonyms before creating the semantic view
+planned_synonyms = {
+    'PORTFOLIONAME': ['fund_name', 'strategy_name', 'portfolio_name'],
+    'DESCRIPTION': ['company', 'security_name', 'description'], 
+    'LEGALNAME': ['issuer_name', 'legal_name', 'company_name'],  # Note: company_name only here
+    'GICS_SECTOR': ['sector', 'industry_sector', 'gics_sector'],
+    'TOTAL_MARKET_VALUE': ['exposure', 'aum', 'market_value']
+}
+validate_synonym_uniqueness(planned_synonyms)
+```
+
+## Step 2: Semantic View Creation
+
+### 2.1 Correct Syntax Format (CRITICAL)
+Follow these exact patterns for ALL sections:
+
+**TABLES Section:**
+```sql
+<table_alias> AS <physical_table_name>
+    PRIMARY KEY (column1, column2) 
+    WITH SYNONYMS=('synonym1','synonym2') 
+    COMMENT='Table description'
+```
+
+**RELATIONSHIPS Section:**
+```sql
+<relationship_name> AS <table_alias>(foreign_key_column) REFERENCES <table_alias>(primary_key_column)
+```
+
+**DIMENSIONS Section:**
+```sql
+<table_alias>.<dimension_name> AS <column_name> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+```
+
+**METRICS Section:**
+```sql
+<table_alias>.<metric_name> AS <aggregation_function> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+```
+
+### CRITICAL SYNTAX RULES (Must Follow)
+```sql
+-- ✅ CORRECT table declaration
+HOLDINGS AS SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR
+
+-- ✅ CORRECT relationship declaration
+HOLDINGS_TO_PORTFOLIOS AS HOLDINGS(PORTFOLIOID) REFERENCES PORTFOLIOS(PORTFOLIOID)
+
+-- ✅ CORRECT dimension (NO PUBLIC keyword)
+PORTFOLIOS.PORTFOLIO_NAME AS PORTFOLIONAME WITH SYNONYMS=('fund_name','strategy_name')
+
+-- ✅ CORRECT metric (NO PUBLIC keyword)  
+HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('exposure','aum')
+
+-- ❌ WRONG table order
+SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR AS HOLDINGS
+
+-- ❌ WRONG dimension format with PUBLIC keyword
+PUBLIC SECURITIES.COMPANY_NAME AS securities.COMPANY_NAME
+
+-- ❌ WRONG metric format with table.alias
+PUBLIC HOLDINGS.TOTAL_MARKET_VALUE AS holdings.MARKET_VALUE
+
+-- ❌ DUPLICATE synonyms across dimensions
+SECURITIES: synonyms=('company_name')
+ISSUERS: synonyms=('company_name')  -- Conflict!
+
+-- ❌ RESERVED word usage
+HOLDINGS.SELECT AS SELECT_VALUE  -- SELECT is reserved
+```
+
+### Formatting Requirements (MANDATORY)
+- **Indentation**: Use tabs, not spaces
+- **Synonyms**: Use `WITH SYNONYMS=()` format (equals sign, no spaces)
+- **Comments**: Include meaningful comments for all elements
+- **Case Sensitivity**: Use exact column names from `DESCRIBE TABLE`
+- **No PUBLIC Keyword**: Never use PUBLIC in DIMENSIONS or METRICS sections
+- **Unique Synonyms**: Each synonym can only appear once across all dimensions and metrics
+
+### 2.2 Complete Working Example
+```sql
+CREATE OR REPLACE SEMANTIC VIEW SAM_DEMO.AI.SAM_ANALYST_VIEW
+	TABLES (
+		HOLDINGS AS SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR
+			PRIMARY KEY (HOLDINGDATE, PORTFOLIOID, SECURITYID) 
+			WITH SYNONYMS=('positions','investments','allocations','holdings') 
+			COMMENT='Daily portfolio holdings and positions',
+		PORTFOLIOS AS SAM_DEMO.CURATED.DIM_PORTFOLIO
+			PRIMARY KEY (PORTFOLIOID) 
+			WITH SYNONYMS=('funds','strategies','mandates','portfolios') 
+			COMMENT='Investment portfolios and fund information',
+		SECURITIES AS SAM_DEMO.CURATED.DIM_SECURITY
+			PRIMARY KEY (SECURITYID) 
+			WITH SYNONYMS=('companies','stocks','bonds','instruments','securities') 
+			COMMENT='Master security reference data',
+		ISSUERS AS SAM_DEMO.CURATED.DIM_ISSUER
+			PRIMARY KEY (ISSUERID) 
+			WITH SYNONYMS=('issuers','entities','corporates') 
+			COMMENT='Issuer and corporate hierarchy data'
+	)
+	RELATIONSHIPS (
+		HOLDINGS_TO_PORTFOLIOS AS HOLDINGS(PORTFOLIOID) REFERENCES PORTFOLIOS(PORTFOLIOID),
+		HOLDINGS_TO_SECURITIES AS HOLDINGS(SECURITYID) REFERENCES SECURITIES(SECURITYID),
+		SECURITIES_TO_ISSUERS AS SECURITIES(ISSUERID) REFERENCES ISSUERS(ISSUERID)
+	)
+	DIMENSIONS (
+		-- Portfolio dimensions
+		PORTFOLIOS.PORTFOLIO_NAME AS PORTFOLIONAME WITH SYNONYMS=('fund_name','strategy_name','portfolio_name') COMMENT='Portfolio or fund name',
+		PORTFOLIOS.STRATEGY AS STRATEGY WITH SYNONYMS=('investment_strategy','portfolio_strategy') COMMENT='Investment strategy type',
+		
+		-- Security dimensions  
+		SECURITIES.COMPANY_NAME AS DESCRIPTION WITH SYNONYMS=('company','security_name','description') COMMENT='Security description or company name',
+		SECURITIES.TICKER AS PRIMARYTICKER WITH SYNONYMS=('ticker_symbol','symbol','primary_ticker') COMMENT='Primary trading symbol',
+		SECURITIES.ASSET_CLASS AS ASSETCLASS WITH SYNONYMS=('instrument_type','security_type','asset_class') COMMENT='Asset class: Equity, Corporate Bond, ETF',
+		
+		-- Issuer dimensions (for enhanced analysis)
+		ISSUERS.ISSUER_NAME AS LEGALNAME WITH SYNONYMS=('issuer_name','legal_name','company_name') COMMENT='Legal issuer name',
+		ISSUERS.SECTOR AS GICS_SECTOR WITH SYNONYMS=('sector','industry_sector','gics_sector') COMMENT='GICS Level 1 sector classification',
+		ISSUERS.COUNTRY AS COUNTRYOFINCORPORATION WITH SYNONYMS=('domicile','country_of_risk','country') COMMENT='Country of incorporation',
+		
+		-- Time dimensions
+		HOLDINGS.HOLDING_DATE AS HOLDINGDATE WITH SYNONYMS=('position_date','as_of_date','date') COMMENT='Holdings as-of date'
+	)
+	METRICS (
+		-- Core position metrics
+		HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('exposure','total_exposure','aum','market_value','position_value') COMMENT='Total market value in base currency',
+		HOLDINGS.HOLDING_COUNT AS COUNT(SECURITYID) WITH SYNONYMS=('position_count','number_of_holdings','holding_count','count') COMMENT='Count of portfolio positions',
+		
+		-- Portfolio weight metrics  
+		HOLDINGS.PORTFOLIO_WEIGHT AS SUM(PORTFOLIOWEIGHT) WITH SYNONYMS=('weight','allocation','portfolio_weight') COMMENT='Portfolio weight as decimal',
+		HOLDINGS.PORTFOLIO_WEIGHT_PCT AS SUM(PORTFOLIOWEIGHT) * 100 WITH SYNONYMS=('weight_percent','allocation_percent','percentage_weight') COMMENT='Portfolio weight as percentage',
+		
+		-- Issuer-level metrics (enhanced capability)
+		HOLDINGS.ISSUER_EXPOSURE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('issuer_total','issuer_value','issuer_exposure') COMMENT='Total exposure to issuer across all securities',
+		
+		-- Concentration metrics
+		HOLDINGS.MAX_POSITION_WEIGHT AS MAX(PORTFOLIOWEIGHT) WITH SYNONYMS=('largest_position','max_weight','concentration') COMMENT='Largest single position weight'
+	)
+	COMMENT='Multi-asset semantic view for portfolio analytics with issuer hierarchy support';
+```
+
+### 2.3 Implementation Template
+```python
+def create_semantic_view(session: Session):
+    """Create semantic view using correct syntax"""
+    
+    # Step 1: Drop any existing views
+    session.sql("DROP VIEW IF EXISTS SAM_DEMO.AI.SAM_ANALYST_VIEW").collect()
+    session.sql("DROP SEMANTIC VIEW IF EXISTS SAM_DEMO.AI.SAM_ANALYST_VIEW").collect()
+    
+    # Step 2: Create semantic view
+    try:
+        session.sql(semantic_view_sql).collect()
+        print("✅ Created semantic view: SAM_ANALYST_VIEW")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to create semantic view: {e}")
+        
+        # Diagnose common issues
+        if "invalid identifier" in str(e):
+            print("🔍 Check column names with DESCRIBE TABLE")
+        elif "duplicate" in str(e):
+            print("🔍 Check for duplicate synonyms or relationships")
+        elif "cannot resolve" in str(e):
+            print("🔍 Verify foreign key relationships exist")
+            
+        raise  # Don't create fallback views - Cortex Analyst requires semantic views
+```
+
+## Step 3: Validation and Testing
+
+### 3.1 Basic Structure Validation
+```sql
+-- 1. Verify semantic view was created
+DESCRIBE SEMANTIC VIEW SAM_DEMO.AI.SAM_ANALYST_VIEW;
+
+-- 2. Check that it has expected dimensions and metrics
+SHOW SEMANTIC VIEWS IN SAM_DEMO.AI;
+```
+
+### 3.2 Query Testing (MANDATORY)
+Test semantic view systematically with these approaches:
+
+**Testing Strategy:**
+1. **Single Metric + Single Dimension**: Verify basic functionality
+2. **Multiple Metrics + Multiple Dimensions**: Test complex queries
+3. **Cross-Table Queries**: Test relationships between tables
+4. **Edge Cases**: Test with filters, aggregations, and business-specific queries
+
+**Testing Pattern:**
+```sql
+-- Basic functionality test
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {primary_metric}
+    DIMENSIONS {primary_dimension}
+) LIMIT 5;
+
+-- Complex query test
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {metric1}, {metric2}
+    DIMENSIONS {dimension1}, {dimension2}, {dimension3}
+) LIMIT 10;
+
+-- Business scenario test (use actual business queries your agents will run)
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {relevant_metrics}
+    DIMENSIONS {relevant_dimensions}
+    FILTERS {business_filters}
+) LIMIT 20;
+```
+
+### 3.3 Validation Checklist
+- [ ] Semantic view created without errors
+- [ ] `DESCRIBE SEMANTIC VIEW` returns structure information
+- [ ] Basic portfolio query returns data
+- [ ] Holdings analysis query works
+- [ ] Sector breakdown query functions
+- [ ] Issuer-level aggregation works (if applicable)
+- [ ] All planned synonyms are working
+- [ ] No duplicate synonym errors
+
+## Step 4: Troubleshooting
+
+### 4.1 Common Error Messages and Solutions
+
+**"invalid identifier 'TABLE.COLUMN'"**
+- **Cause**: Column name doesn't exist or wrong case
+- **Solution**: Run `DESCRIBE TABLE` to get exact column names
+
+**"duplicate synonym"**
+- **Cause**: Same synonym used in multiple dimensions/metrics
+- **Solution**: Use unique synonym sets for each dimension/metric
+
+**"cannot resolve reference"**
+- **Cause**: Foreign key relationship doesn't exist
+- **Solution**: Verify table relationships with sample JOINs
+
+**"unexpected COMMENT"**
+- **Cause**: Indentation issues (spaces instead of tabs)
+- **Solution**: Use tabs for indentation throughout
+
+### 4.2 Debugging Process
+```python
+def debug_semantic_view_creation(session: Session, error_message: str):
+    """Step-by-step debugging for semantic view errors"""
+    
+    print("🔍 Debugging semantic view creation...")
+    
+    if "invalid identifier" in error_message:
+        print("1. Check column names with DESCRIBE TABLE")
+        print("2. Ensure exact case matching")
+        print("3. Verify table aliases are correct")
+        
+    elif "duplicate" in error_message:
+        print("1. Check for duplicate synonyms across dimensions/metrics") 
+        print("2. Verify relationship names are unique")
+        print("3. Check for reserved keyword conflicts")
+        
+    elif "cannot resolve" in error_message:
+        print("1. Verify foreign key relationships exist")
+        print("2. Test JOINs manually between tables")
+        print("3. Check PRIMARY KEY definitions")
+        
+    else:
+        print("1. Verify table existence and access permissions")
+        print("2. Check indentation (use tabs, not spaces)")
+        print("3. Validate SQL syntax and formatting")
+```
+
+## Step 5: Advanced Patterns
+
+### 5.1 Multi-Table Views
+When including multiple related tables:
+- Start with 2 tables and test
+- Add one table at a time
+- Keep relationships simple (avoid complex JOIN chains)
+- Test performance with realistic data volumes
+
+### 5.2 Performance Considerations
+- Use appropriate PRIMARY KEY definitions
+- Limit number of tables in single view
+- Consider multiple focused views vs one large view
+- Monitor query response times during testing
+
+## Summary
+
+This guide provides a complete workflow for creating semantic views that work reliably with Cortex Analyst. Follow the steps sequentially for best results, and refer back to the syntax patterns and troubleshooting sections as needed.

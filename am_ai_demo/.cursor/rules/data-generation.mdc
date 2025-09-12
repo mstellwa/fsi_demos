@@ -1,0 +1,535 @@
+---
+alwaysApply: true
+---
+
+# SAM Demo - Enhanced Data Generation Guide
+
+Complete guide for generating industry-standard asset management data using the enhanced SecurityID-based model with transaction audit trails and issuer hierarchies.
+
+## Overview
+
+This guide covers the enhanced data model that follows industry best practices with immutable SecurityID, transaction-based holdings, and corporate hierarchy support while maintaining real asset/market data integration.
+
+**Key Principles:**
+- **Industry-Standard Architecture**: Professional asset management data model following best practices
+- **Real Asset Integration**: Authentic market data with synthetic fallback (see @real-assets.mdc)
+- **Performance-Optimized**: SQL-first approach with efficient Snowpark operations  
+- **Comprehensive Coverage**: Complete fact/dimension model with proper relationships
+
+**Naming Standards**: See @naming-conventions.mdc for complete naming guidelines.
+
+## Enhanced Data Model Architecture
+
+### 1.1 Core Dimension Tables (Industry Standard)
+```sql
+-- Master security dimension with immutable SecurityID
+DIM_SECURITY (
+    SecurityID BIGINT IDENTITY(1,1) PRIMARY KEY,  -- Immutable surrogate key
+    IssuerID BIGINT NOT NULL,                     -- FK to DIM_ISSUER
+    PrimaryTicker VARCHAR(50),                    -- Current primary ticker
+    Description VARCHAR(255),
+    AssetClass VARCHAR(50),                       -- 'Equity', 'Corporate Bond', 'ETF'
+    SecurityType VARCHAR(100),
+    CountryOfRisk CHAR(2),
+    IssueDate DATE,
+    MaturityDate DATE,                            -- For bonds
+    CouponRate DECIMAL(18, 8),                    -- For bonds
+    RecordStartDate TIMESTAMP_NTZ,
+    RecordEndDate TIMESTAMP_NTZ,
+    IsActive BOOLEAN
+)
+
+-- Security identifier cross-reference ("symbology spine")
+DIM_SECURITY_IDENTIFIER_XREF (
+    SecurityIdentifierID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    SecurityID BIGINT NOT NULL,
+    IdentifierType VARCHAR(50) NOT NULL,          -- 'CUSIP', 'ISIN', 'SEDOL', 'FIGI', 'TICKER'
+    IdentifierValue VARCHAR(100) NOT NULL,
+    EffectiveStartDate DATE NOT NULL,
+    EffectiveEndDate DATE NOT NULL,
+    IsPrimaryForType BOOLEAN
+)
+
+-- Issuer dimension with corporate hierarchies
+DIM_ISSUER (
+    IssuerID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    UltimateParentIssuerID BIGINT,                -- Self-referencing for hierarchy
+    LegalName VARCHAR(255) NOT NULL,
+    LEI VARCHAR(20),                              -- Legal Entity Identifier
+    CountryOfIncorporation CHAR(2),
+    GICS_Sector VARCHAR(100)
+)
+
+-- Portfolio and benchmark dimensions
+DIM_PORTFOLIO (
+    PortfolioID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PortfolioCode VARCHAR(100) UNIQUE NOT NULL,
+    PortfolioName VARCHAR(255),
+    Strategy VARCHAR(100),
+    BaseCurrency CHAR(3),
+    InceptionDate DATE
+)
+
+DIM_BENCHMARK (
+    BenchmarkID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    BenchmarkName VARCHAR(255) UNIQUE NOT NULL,
+    Provider VARCHAR(100)
+)
+```
+
+### 1.2 Core Fact Tables (Transaction-Based Model)
+```sql
+-- Canonical transaction log (source of truth)
+FACT_TRANSACTION (
+    TransactionID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TransactionDate DATE NOT NULL,                -- Direct date column
+    PortfolioID BIGINT NOT NULL,
+    SecurityID BIGINT NOT NULL,
+    TransactionType VARCHAR(50) NOT NULL,         -- 'BUY', 'SELL', 'DIVIDEND', 'INTEREST'
+    TradeDate DATE NOT NULL,
+    SettleDate DATE,
+    Quantity DECIMAL(38, 10),
+    Price DECIMAL(38, 10),
+    GrossAmount_Local DECIMAL(38, 10),
+    Commission_Local DECIMAL(38, 10),
+    Currency CHAR(3),
+    SourceSystem VARCHAR(50)                      -- 'ABOR' or 'IBOR'
+)
+
+-- ABOR positions (built from transactions)
+FACT_POSITION_DAILY_ABOR (
+    HoldingDate DATE NOT NULL,                    -- Direct date column
+    PortfolioID BIGINT NOT NULL,
+    SecurityID BIGINT NOT NULL,
+    Quantity DECIMAL(38, 10),
+    MarketValue_Local DECIMAL(38, 10),
+    MarketValue_Base DECIMAL(38, 10),
+    CostBasis_Local DECIMAL(38, 10),
+    CostBasis_Base DECIMAL(38, 10),
+    AccruedInterest_Local DECIMAL(38, 10),
+    PortfolioWeight DECIMAL(18, 12)
+)
+
+-- Enhanced market data
+FACT_MARKETDATA_TIMESERIES (
+    PriceDate DATE NOT NULL,                      -- Direct date column
+    SecurityID BIGINT NOT NULL,
+    Price_Close DECIMAL(38, 10),
+    Price_Open DECIMAL(38, 10),
+    Price_High DECIMAL(38, 10),
+    Price_Low DECIMAL(38, 10),
+    Volume BIGINT,
+    TotalReturnFactor_Daily DECIMAL(38, 15)
+)
+```
+
+## Step 2: Data Generation Patterns
+
+### 2.1 Foundation Table Creation Order
+```python
+def build_foundation_tables(session: Session, test_mode: bool = False):
+    """Build all foundation tables in dependency order."""
+    
+    # Step 1: Build issuer dimension first (no dependencies)
+    build_dim_issuer(session, test_mode)
+    
+    # Step 2: Build security dimension with cross-reference (depends on issuers)
+    build_dim_security_with_xref(session, test_mode)
+    
+    # Step 3: Build portfolio and benchmark dimensions
+    build_dim_portfolio(session)
+    build_dim_benchmark(session)
+    
+    # Step 4: Build transaction log (depends on portfolios and securities)
+    build_fact_transaction(session, test_mode)
+    
+    # Step 5: Build ABOR positions from transactions
+    build_fact_position_daily_abor(session)
+    
+    # Step 6: Build market data with real data integration
+    build_fact_marketdata_timeseries(session, test_mode)
+    
+    # Step 7: Build remaining fact tables
+    build_fundamentals_and_estimates(session)
+    build_esg_scores(session)
+    build_factor_exposures(session)
+    build_benchmark_holdings(session)
+```
+
+### 2.2 Real Asset Data Integration (Enhanced)
+```python
+# Enhanced real asset integration with issuer mapping
+def build_dim_issuer_from_real_data(session: Session):
+    """Build issuer dimension from real asset data."""
+    
+    issuer_data = []
+    for ticker, company_data in config.REAL_ASSET_ISSUER_MAPPING.items():
+        issuer_data.append({
+            'LegalName': company_data['legal_name'],
+            'CountryOfIncorporation': company_data['country'],
+            'GICS_Sector': company_data['sector'],
+            'LEI': f"LEI{hash(company_data['legal_name']) % 1000000:06d}"
+        })
+    
+    issuers_df = session.create_dataframe(issuer_data)
+    issuers_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.CURATED.DIM_ISSUER")
+
+def build_security_xref_from_real_data(session: Session, real_assets_df: pd.DataFrame):
+    """Build identifier cross-reference from real asset data."""
+    
+    xref_data = []
+    for security_id, ticker in enumerate(real_tickers, 1):
+        # Create multiple identifier types for each security
+        xref_data.extend([
+            {
+                'SecurityID': security_id,
+                'IdentifierType': 'TICKER',
+                'IdentifierValue': ticker,
+                'EffectiveStartDate': datetime(2010, 1, 1).date(),
+                'EffectiveEndDate': datetime(2099, 12, 31).date(),
+                'IsPrimaryForType': True
+            },
+            {
+                'SecurityID': security_id,
+                'IdentifierType': 'CUSIP',
+                'IdentifierValue': f"{abs(hash(ticker)) % 100000000:08d}",
+                'EffectiveStartDate': datetime(2010, 1, 1).date(),
+                'EffectiveEndDate': datetime(2099, 12, 31).date(),
+                'IsPrimaryForType': True
+            }
+        ])
+```
+
+### 2.3 Transaction-Based Holdings Generation
+```python
+def build_fact_transaction(session: Session, test_mode: bool = False):
+    """Generate synthetic transaction history that builds to current positions."""
+    
+    # Generate realistic transaction patterns over 12 months
+    session.sql(f"""
+        CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_TRANSACTION AS
+        WITH portfolio_securities AS (
+            -- Select securities for each portfolio based on strategy
+            SELECT p.PortfolioID, s.SecurityID
+            FROM {config.DATABASE_NAME}.CURATED.DIM_PORTFOLIO p
+            CROSS JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
+            WHERE CASE 
+                WHEN p.PortfolioName LIKE '%Tech%' THEN i.GICS_Sector = 'Information Technology'
+                WHEN p.PortfolioName LIKE '%Multi-Asset%' THEN TRUE
+                ELSE s.AssetClass = 'Equity'
+            END
+        ),
+        transaction_dates AS (
+            -- Generate weekly transaction dates over 12 months
+            SELECT DATEADD(day, seq4() * 7, DATEADD(month, -{config.SYNTHETIC_TRANSACTION_MONTHS}, CURRENT_DATE())) as trade_date
+            FROM TABLE(GENERATOR(rowcount => {config.SYNTHETIC_TRANSACTION_MONTHS * 4}))
+            WHERE DAYOFWEEK(trade_date) BETWEEN 2 AND 6
+        )
+        SELECT 
+            ROW_NUMBER() OVER (ORDER BY ps.PortfolioID, ps.SecurityID, td.trade_date) as TransactionID,
+            td.trade_date as TransactionDate,
+            ps.PortfolioID,
+            ps.SecurityID,
+            'BUY' as TransactionType,
+            td.trade_date as TradeDate,
+            DATEADD(day, 2, td.trade_date) as SettleDate,
+            UNIFORM(100, 10000, RANDOM()) as Quantity,
+            UNIFORM(50, 500, RANDOM()) as Price,
+            NULL as GrossAmount_Local,
+            UNIFORM(5, 50, RANDOM()) as Commission_Local,
+            'USD' as Currency,
+            'ABOR' as SourceSystem
+        FROM portfolio_securities ps
+        CROSS JOIN transaction_dates td
+        WHERE UNIFORM(0, 1, RANDOM()) < 0.1  -- Sparse transactions
+    """).collect()
+
+def build_fact_position_daily_abor(session: Session):
+    """Build ABOR positions from transaction log."""
+    
+    session.sql(f"""
+        CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_POSITION_DAILY_ABOR AS
+        WITH monthly_dates AS (
+            SELECT LAST_DAY(DATEADD(month, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE()))) as position_date
+            FROM TABLE(GENERATOR(rowcount => {12 * config.YEARS_OF_HISTORY}))
+        ),
+        transaction_balances AS (
+            -- Calculate cumulative positions from transaction log
+            SELECT 
+                PortfolioID,
+                SecurityID,
+                SUM(CASE WHEN TransactionType = 'BUY' THEN Quantity ELSE -Quantity END) as TotalQuantity,
+                AVG(Price) as AvgPrice
+            FROM {config.DATABASE_NAME}.CURATED.FACT_TRANSACTION
+            GROUP BY PortfolioID, SecurityID
+            HAVING TotalQuantity > 0
+        )
+        SELECT 
+            md.position_date as HoldingDate,
+            tb.PortfolioID,
+            tb.SecurityID,
+            tb.TotalQuantity as Quantity,
+            tb.TotalQuantity * tb.AvgPrice as MarketValue_Base,
+            -- Calculate portfolio weights
+            (tb.TotalQuantity * tb.AvgPrice) / SUM(tb.TotalQuantity * tb.AvgPrice) OVER (PARTITION BY md.position_date, tb.PortfolioID) as PortfolioWeight
+        FROM monthly_dates md
+        CROSS JOIN transaction_balances tb
+    """).collect()
+```
+
+## Step 3: Real Data Integration (Preserved)
+
+### 3.1 Enhanced Real Market Data Integration
+```python
+def build_fact_marketdata_with_real_prices(session: Session):
+    """Build market data using real OHLCV data with SecurityID mapping."""
+    
+    if config.USE_REAL_MARKET_DATA and os.path.exists(config.REAL_MARKET_DATA_CSV_PATH):
+        # Load real market data CSV
+        real_market_df = pd.read_csv(config.REAL_MARKET_DATA_CSV_PATH)
+        real_market_snowpark_df = session.create_dataframe(real_market_df)
+        real_market_snowpark_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.RAW.TEMP_REAL_MARKET_DATA")
+        
+        # Build market data with SecurityID mapping
+        session.sql(f"""
+            CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_MARKETDATA_TIMESERIES AS
+            WITH business_dates AS (
+                SELECT DATEADD(day, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE())) as price_date
+                FROM TABLE(GENERATOR(rowcount => {365 * config.YEARS_OF_HISTORY}))
+                WHERE DAYOFWEEK(price_date) BETWEEN 2 AND 6
+            ),
+            securities_dates AS (
+                SELECT 
+                    s.SecurityID,
+                    xref.IdentifierValue as TICKER,
+                    s.AssetClass,
+                    bd.price_date as PriceDate
+                FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
+                JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref 
+                    ON s.SecurityID = xref.SecurityID
+                CROSS JOIN business_dates bd
+                WHERE xref.IdentifierType = 'TICKER' 
+                AND xref.IsPrimaryForType = TRUE
+            ),
+            real_data AS (
+                SELECT 
+                    TICKER,
+                    DATE::date as PRICE_DATE,
+                    CLOSE_PRICE,
+                    OPEN_PRICE,
+                    HIGH_PRICE,
+                    LOW_PRICE,
+                    VOLUME
+                FROM {config.DATABASE_NAME}.RAW.TEMP_REAL_MARKET_DATA
+                WHERE CLOSE_PRICE IS NOT NULL
+            )
+            SELECT 
+                sd.PriceDate,
+                sd.SecurityID,
+                -- Use real data when available, synthetic otherwise
+                COALESCE(rd.CLOSE_PRICE, synthetic_price_generation) as Price_Close,
+                COALESCE(rd.OPEN_PRICE, synthetic_price_generation) as Price_Open,
+                COALESCE(rd.HIGH_PRICE, synthetic_price_generation) as Price_High,
+                COALESCE(rd.LOW_PRICE, synthetic_price_generation) as Price_Low,
+                COALESCE(rd.VOLUME, synthetic_volume_generation) as Volume,
+                1.0 as TotalReturnFactor_Daily
+            FROM securities_dates sd
+            LEFT JOIN real_data rd ON sd.TICKER = rd.TICKER AND sd.PriceDate = rd.PRICE_DATE
+        """).collect()
+```
+
+### 3.2 Configuration Control (Enhanced)
+```python
+# Enhanced configuration in config.py
+USE_TRANSACTION_BASED_MODEL = True
+GENERATE_CORPORATE_HIERARCHIES = True
+ISSUER_HIERARCHY_DEPTH = 2
+
+# Transaction generation settings
+SYNTHETIC_TRANSACTION_MONTHS = 12
+TRANSACTION_TYPES = ['BUY', 'SELL', 'DIVIDEND', 'CORPORATE_ACTION']
+AVERAGE_MONTHLY_TRANSACTIONS_PER_SECURITY = 2.5
+
+# Real data integration (preserved)
+USE_REAL_ASSETS_CSV = True
+REAL_ASSETS_CSV_PATH = '../data/real_assets.csv'
+USE_REAL_MARKET_DATA = True  
+REAL_MARKET_DATA_CSV_PATH = '../data/real_market_data.csv'
+
+# Enhanced real asset to issuer mapping
+REAL_ASSET_ISSUER_MAPPING = {
+    'AAPL': {'legal_name': 'Apple Inc.', 'country': 'US', 'sector': 'Information Technology'},
+    'MSFT': {'legal_name': 'Microsoft Corporation', 'country': 'US', 'sector': 'Information Technology'},
+    # ... additional mappings
+}
+```
+
+## Step 4: Enhanced Document Integration
+
+### 4.1 SecurityID-Based Document Linkage
+```sql
+-- Enhanced document corpus schema
+{DOCUMENT_TYPE}_CORPUS (
+    DOCUMENT_ID VARCHAR PRIMARY KEY,
+    DOCUMENT_TITLE VARCHAR(500),
+    DOCUMENT_TYPE VARCHAR(100),
+    SecurityID BIGINT,                            -- FK to DIM_SECURITY
+    IssuerID BIGINT,                              -- FK to DIM_ISSUER  
+    PUBLISH_DATE DATE,
+    LANGUAGE VARCHAR(10) DEFAULT 'en',
+    DOCUMENT_TEXT TEXT
+)
+```
+
+### 4.2 Document Generation with Enhanced Model
+```python
+def generate_prompts(session: Session, document_types: List[str], test_mode: bool = False):
+    """Generate prompts using new SecurityID-based model."""
+    
+    # Query securities with issuer information
+    securities = session.sql(f"""
+        SELECT 
+            ds.SecurityID,
+            xref.IdentifierValue as TICKER,
+            ds.Description as COMPANY_NAME,
+            di.GICS_Sector,
+            ds.AssetClass,
+            di.CountryOfIncorporation,
+            di.IssuerID,
+            di.LegalName as ISSUER_NAME
+        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY ds
+        JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER di ON ds.IssuerID = di.IssuerID
+        JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON ds.SecurityID = xref.SecurityID
+        WHERE xref.IdentifierType = 'TICKER' 
+        AND xref.IsPrimaryForType = TRUE
+        AND ds.AssetClass = 'Equity'
+        ORDER BY xref.IdentifierValue
+    """).collect()
+    
+    # Generate prompts with SecurityID and IssuerID context
+    for doc_type in document_types:
+        if config.DOCUMENT_TYPES[doc_type]['linkage_level'] == 'security':
+            # Security-level documents
+            for security in securities:
+                prompt_data.append({
+                    'SecurityID': security['SECURITYID'],
+                    'IssuerID': security['ISSUERID'],
+                    'TICKER': security['TICKER'],
+                    # ... other fields
+                })
+        elif config.DOCUMENT_TYPES[doc_type]['linkage_level'] == 'issuer':
+            # Issuer-level documents (NGO reports, engagement notes)
+            for security in securities:
+                prompt_data.append({
+                    'SecurityID': None,  # Issuer-level
+                    'IssuerID': security['ISSUERID'],
+                    # ... other fields
+                })
+```
+
+## Step 5: Data Quality and Validation
+
+### 5.1 Enhanced Validation Patterns
+```python
+def validate_enhanced_data_quality(session: Session):
+    """Validate data quality of the enhanced model."""
+    
+    # 1. Validate portfolio weights sum to 100%
+    weight_check = session.sql(f"""
+        SELECT 
+            PortfolioID,
+            SUM(PortfolioWeight) as TotalWeight,
+            ABS(SUM(PortfolioWeight) - 1.0) as WeightDeviation
+        FROM {config.DATABASE_NAME}.CURATED.FACT_POSITION_DAILY_ABOR 
+        WHERE HoldingDate = (SELECT MAX(HoldingDate) FROM {config.DATABASE_NAME}.CURATED.FACT_POSITION_DAILY_ABOR)
+        GROUP BY PortfolioID
+        HAVING ABS(SUM(PortfolioWeight) - 1.0) > 0.001
+    """).collect()
+    
+    # 2. Validate transaction log balances to positions
+    transaction_balance_check = session.sql(f"""
+        WITH transaction_balances AS (
+            SELECT 
+                PortfolioID,
+                SecurityID,
+                SUM(CASE WHEN TransactionType IN ('BUY') THEN Quantity
+                         WHEN TransactionType IN ('SELL') THEN -Quantity
+                         ELSE 0 END) as TransactionQuantity
+            FROM {config.DATABASE_NAME}.CURATED.FACT_TRANSACTION
+            WHERE SettleDate <= CURRENT_DATE
+            GROUP BY PortfolioID, SecurityID
+        )
+        SELECT COUNT(*) as mismatches
+        FROM {config.DATABASE_NAME}.CURATED.FACT_POSITION_DAILY_ABOR p
+        JOIN transaction_balances tb ON p.PortfolioID = tb.PortfolioID AND p.SecurityID = tb.SecurityID
+        WHERE p.HoldingDate = (SELECT MAX(HoldingDate) FROM {config.DATABASE_NAME}.CURATED.FACT_POSITION_DAILY_ABOR)
+        AND ABS(p.Quantity - tb.TransactionQuantity) > 0.01
+    """).collect()
+    
+    # 3. Validate security identifier cross-reference integrity
+    xref_check = session.sql(f"""
+        SELECT COUNT(*) as incomplete_securities
+        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF
+        WHERE CURRENT_DATE BETWEEN EffectiveStartDate AND EffectiveEndDate
+        GROUP BY SecurityID
+        HAVING COUNT(DISTINCT IdentifierType) < 3  -- Should have at least TICKER, CUSIP, ISIN
+    """).collect()
+```
+
+### 5.2 Required Validations (Enhanced)
+- ✅ Portfolio weights sum to 100% (±0.1% tolerance)
+- ✅ Transaction log balances to position snapshots
+- ✅ Security identifier cross-reference integrity
+- ✅ Issuer hierarchy relationships valid
+- ✅ No negative prices or market values
+- ✅ Date ranges logical and consistent
+- ✅ All foreign key relationships valid
+
+## Step 6: Performance and Scalability
+
+### 6.1 Snowpark Optimization Patterns
+```python
+# Use SQL for complex transformations, Snowpark for data movement
+session.sql(complex_transformation_sql).collect()  # Preferred for large datasets
+
+# Use overwrite mode for deterministic builds
+df.write.mode("overwrite").save_as_table("SAM_DEMO.CURATED.TABLE_NAME")
+
+# Batch operations for better performance
+session.sql("BEGIN").collect()
+# ... multiple related operations
+session.sql("COMMIT").collect()
+```
+
+### 6.2 Memory Management
+```python
+# For large datasets, use SQL-based generation
+def build_large_fact_table(session: Session):
+    """Use SQL for large fact table generation"""
+    session.sql(f"""
+        CREATE OR REPLACE TABLE {table_name} AS
+        WITH complex_logic AS (
+            -- Complex transformations in SQL
+        )
+        SELECT * FROM complex_logic
+    """).collect()
+
+# Avoid large Pandas DataFrames in memory
+# Use session.create_dataframe() for small reference data only
+```
+
+## Summary
+
+This guide provides the patterns and procedures for generating industry-standard asset management data with immutable SecurityID, transaction audit trails, issuer hierarchies, and real data integration capabilities.
+
+**Enhanced Model Benefits:**
+- Professional asset management data architecture
+- Corporate action resilience and temporal integrity  
+- Complete transaction audit trail for compliance
+- Issuer-level risk analysis and corporate hierarchies
+- Real market data integration with synthetic fallback
+
+**Related Rules**: 
+- @real-assets.mdc - For real data integration patterns
+- @naming-conventions.mdc - For database naming standards
+- @development-patterns.mdc - For extending data model

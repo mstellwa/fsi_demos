@@ -1,0 +1,450 @@
+---
+alwaysApply: true
+---
+
+# SAM Demo - Real Asset Data Integration Rules
+
+Snowflake Marketplace integration for authentic financial instrument data using OpenFIGI standard.
+
+## Configuration
+
+### Settings in `python/config.py`
+```python
+# Real asset data extraction settings
+USE_REAL_ASSETS_CSV = True  # Use existing CSV instead of generating fake data
+REAL_ASSETS_CSV_PATH = './data/real_assets.csv'  # Path to real asset data
+EXTRACT_REAL_ASSETS = False  # Set to True to extract from Marketplace
+
+# Marketplace data source (requires subscription)
+MARKETPLACE_DATABASE = 'FINANCIALS_ECONOMICS_ENTERPRISE'
+OPENFIGI_SCHEMA = 'CYBERSYN'
+```
+
+## CLI Usage
+
+### Extract Real Assets
+```bash
+# Extract real assets from Snowflake Marketplace (requires Marketplace access)
+python main.py --extract-real-assets
+
+# Use real assets in builds (when USE_REAL_ASSETS_CSV = True)
+python main.py --scenarios portfolio_copilot
+```
+
+## Implementation Pattern
+
+### Error Handling Logic
+```python
+# In generate_structured.py build_canonical_universes()
+if config.USE_REAL_ASSETS_CSV:
+    import os
+    if not os.path.exists(config.REAL_ASSETS_CSV_PATH):
+        print("❌ Error: Real assets CSV file not found!")
+        print(f"   Expected location: {config.REAL_ASSETS_CSV_PATH}")
+        print("   To use real assets, you need:")
+        print("   1. Access to 'Public Data Financials & Economics: Enterprise' dataset from Snowflake Marketplace")
+        print("   2. Run: python main.py --extract-real-assets")
+        print("   3. Then run your normal build command")
+        print("   Falling back to generated realistic tickers...")
+```
+
+### Critical Implementation Rules
+
+#### 1. **NO LIMITS in SQL Extraction**
+- **NEVER add LIMIT clauses** to real asset extraction queries
+- Total dataset is <100,000 rows - extract ALL to ensure complete coverage
+- Missing regions (especially USA) occurs when limits are too restrictive
+- **Rule**: Remove all LIMIT clauses from marketplace queries to capture full dataset
+
+#### 2. **Handle Pandas NaN Values in String Operations**
+```python
+# ❌ WRONG - Will fail with 'float' object is not subscriptable
+country = asset.get('COUNTRY_OF_DOMICILE', 'DE')[:2]
+
+# ✅ CORRECT - Safe handling of NaN/float values  
+country_of_domicile = asset.get('COUNTRY_OF_DOMICILE')
+if country_of_domicile and not pd.isna(country_of_domicile) and isinstance(country_of_domicile, str):
+    safe_country = country_of_domicile[:2]
+else:
+    safe_country = 'US'  # Default
+```
+
+#### 3. **Portfolio Holdings Alignment**
+- Ensure portfolio holdings prioritize same stocks that have research coverage
+- Use consistent prioritization in both `build_fact_transaction()` and `generate_unstructured.py`
+- **Priority Order**: Major stocks (AAPL, MSFT, etc.) → Real US tickers → Other securities
+
+#### 4. **Demo Flow Coherence**
+- Portfolio holdings must align with demo scenario questions
+- Update demo scenarios to use actual portfolio holdings, not aspirational stocks
+- Test actual holdings before updating demo documentation
+
+### Enhanced SQL Query (No Limits)
+```sql
+-- Enhanced query in extract_real_assets.py
+-- Key changes: NO LIMIT clause, expanded asset categories, includes ISSUER_NAME
+SELECT
+    cs.MARKET_REGION,
+    cs.ASSET_CATEGORY,
+    cs.ISSUER_NAME,           -- New: For issuer dimension building
+    cs.INDUSTRY_SECTOR,
+    cs.TOP_LEVEL_OPENFIGI_ID,
+    cs.SECURITY_NAME,
+    cs.PRIMARY_TICKER,
+    cs.PRIMARY_EXCHANGE_CODE,
+    cs.PRIMARY_EXCHANGE_NAME,
+    cs.COUNTRY_OF_DOMICILE,
+    cs.EXCHANGE_CODES
+FROM Categorized_Securities cs
+WHERE cs.ASSET_CATEGORY IS NOT NULL
+ORDER BY cs.MARKET_REGION, cs.ASSET_CATEGORY, cs.ISSUER_NAME, cs.SECURITY_NAME
+-- NO LIMIT - capture ALL assets including USA
+```
+
+### OpenFIGI Query Pattern
+```python
+# In extract_real_assets.py
+def extract_real_assets_to_csv(session: Session):
+    """Extract real assets using OpenFIGI standard"""
+    # Uses enhanced SQL with expanded coverage
+    # Extracts ALL securities across USA/EU/APAC regions
+    # Includes expanded asset classes: Equity/Corp Bond/Govt Bond/Muni/ETF
+    # Maps company relationships for issuer dimension
+    # NO LIMIT ensures complete coverage including USA securities
+```
+
+## Data Source Requirements
+
+### Marketplace Prerequisites
+- **Dataset**: "Public Data Financials & Economics: Enterprise"
+- **Database**: `FINANCIALS_ECONOMICS_ENTERPRISE.CYBERSYN`
+- **Tables**: 
+  - `OPENFIGI_SECURITY_INDEX` (security master data)
+  - `COMPANY_SECURITY_RELATIONSHIPS` (company linkages)
+  - `STOCK_PRICE_TIMESERIES` (real daily OHLCV data)
+- **Compute**: Sufficient warehouse for complex query execution
+
+### Fallback Strategy (Current Working)
+- Real major tickers: AAPL, MSFT, NVDA, ASML, TSM, NESTLE, etc.
+- Proper geographic distribution: 55% US, 30% EU, 15% APAC/EM
+- Correct asset classes: 70% Equity, 20% Bonds, 10% ETF
+- Realistic characteristics: Bond ratings, ETF structures
+
+## Tested Results
+
+### Successful Extraction
+- ✅ **Total Assets**: 6,163 real securities extracted
+- ✅ **Distribution**: 3,229 APAC/EM Equity, 2,934 EU Equity
+- ✅ **File Size**: 1.7MB CSV with complete metadata
+- ✅ **Geographic Coverage**: Authentic global market representation
+
+### Benefits of Real Assets
+- Authentic ticker symbols for enhanced demo credibility
+- Proper industry sector classifications from SIC codes
+- Real geographic distribution across global markets
+- Enhanced customer presentation authenticity
+
+## Real Asset Data Processing Optimization Patterns
+
+### Optimization Strategy Overview
+**Status**: ✅ **FULLY IMPLEMENTED** - All main real asset functions optimized
+
+**Core Principles**:
+1. **Snowpark First**: Use Snowpark operations when possible for best performance
+2. **Hybrid Approach**: Combine optimized pandas filtering with Snowpark DataFrame creation when needed
+3. **Fallback Strategy**: Always provide synthetic alternatives when real data unavailable
+4. **Error Resilience**: Handle pandas NaN values and missing data gracefully
+
+### Function Optimization Patterns
+
+#### Pattern 1: Full Snowpark Optimization (Recommended)
+**Use Case**: When working with temporary tables and simple column operations
+**Example**: `build_dim_issuer_from_real_data`
+
+```python
+def build_optimized_function_snowpark(session: Session):
+    """Pattern for full Snowpark optimization"""
+    
+    # Load real assets to temporary table
+    real_assets_df = session.write_pandas(
+        real_assets_df_pandas,
+        table_name="TEMP_REAL_ASSETS",
+        quote_identifiers=False,
+        auto_create_table=True, 
+        table_type="temp"
+    )
+    
+    # Use Snowpark DataFrame operations
+    from snowflake.snowpark.functions import (
+        col, lit, ifnull, row_number, abs as abs_func, hash as hash_func,
+        substr, trim, to_varchar, concat
+    )
+    from snowflake.snowpark import Window
+    
+    result_df = (real_assets_df.select(
+        ifnull(col("ISSUER_NAME"), col("SECURITY_NAME")).alias("LegalName"),
+        ifnull(col("COUNTRY_OF_DOMICILE"), lit("US")).alias("CountryOfIncorporation"),
+        col("INDUSTRY_SECTOR").alias("GICS_Sector")
+    )
+    .filter((col("LegalName").isNotNull()) & (col("LegalName") != lit("Unknown")))
+    .distinct()
+    .select(
+        row_number().over(Window.order_by("LegalName")).alias("ID"),
+        # ... other transformations
+    ))
+    
+    # Save to database
+    result_df.write.mode("overwrite").save_as_table("TARGET_TABLE")
+```
+
+#### Pattern 2: Optimized Pandas + Snowpark Hybrid (Fallback)
+**Use Case**: When Snowpark quoted identifier issues arise or complex pandas operations needed
+**Example**: `build_dim_security_from_real_data`
+
+```python
+def build_optimized_function_hybrid(session: Session, targets: dict):
+    """Pattern for optimized pandas + Snowpark hybrid"""
+    
+    # Load real assets using pandas (efficient for complex filtering)
+    from extract_real_assets import load_real_assets_from_csv
+    real_assets_df = load_real_assets_from_csv()
+    
+    # Optimized pandas operations (vectorized, no iteration)
+    all_data = []
+    for category, target_count in targets.items():
+        # Efficient pandas filtering with vectorized operations
+        category_assets = (real_assets_df[
+            (real_assets_df['ASSET_CATEGORY'] == category) &
+            (real_assets_df['PRIMARY_TICKER'].notna()) &
+            (real_assets_df['PRIMARY_TICKER'].str.len() <= 10) &
+            (~real_assets_df['PRIMARY_TICKER'].str.contains(' ', na=False))
+        ].drop_duplicates(subset=['PRIMARY_TICKER'], keep='first')
+         .head(target_count))
+        
+        # Process in batches, not row-by-row
+        for _, asset in category_assets.iterrows():
+            all_data.append({
+                'ID': len(all_data) + 1,
+                'Ticker': asset['PRIMARY_TICKER'],
+                'Description': str(asset.get('SECURITY_NAME', asset['PRIMARY_TICKER']))[:255],
+                # ... other fields with safe NaN handling
+            })
+    
+    # Use Snowpark for database operations
+    if all_data:
+        result_df = session.create_dataframe(all_data)
+        result_df.write.mode("overwrite").save_as_table("TARGET_TABLE")
+```
+
+#### Pattern 3: Safe NaN Handling (MANDATORY)
+**Critical for all real asset processing**:
+
+```python
+# ✅ CORRECT - Safe handling patterns
+def safe_string_operations(asset_row):
+    """Safe handling of pandas NaN values in string operations"""
+    
+    # For string slicing
+    country = asset_row.get('COUNTRY_OF_DOMICILE')
+    if country and not pd.isna(country) and isinstance(country, str):
+        safe_country = country[:2]
+    else:
+        safe_country = 'US'  # Default
+    
+    # For string methods
+    industry = asset_row.get('INDUSTRY_SECTOR')
+    if industry and not pd.isna(industry) and isinstance(industry, str):
+        safe_industry = industry.lower()
+    else:
+        safe_industry = 'diversified'
+    
+    # For string formatting
+    description = str(asset_row.get('SECURITY_NAME', asset_row['PRIMARY_TICKER']))[:255]
+    
+    return safe_country, safe_industry, description
+```
+
+### Implementation Status (COMPLETED)
+
+#### ✅ Optimized Functions
+1. **`build_dim_issuer_from_real_data`** - Full Snowpark optimization with temp table reuse
+2. **`build_dim_security_from_real_data`** - Optimized pandas + Snowpark hybrid approach
+3. **`build_marketdata_with_real_prices`** - Already efficient SQL-based approach
+4. **ESG/Factor/Benchmark Functions** - Implemented with efficient SQL generation
+
+#### ✅ Performance Results
+- **Issuer Generation**: 79,186 real issuers from 92,573 assets using Snowpark operations
+- **Security Generation**: 400 real securities (350 Equity + 50 ETF) using optimized pandas
+- **Market Data**: 4M+ records with real/synthetic blend
+- **ESG/Factor Data**: Full SQL-based generation with sector-specific characteristics
+
+#### ✅ Demo Flow Alignment (RESOLVED)
+- **Issue**: Portfolio holdings didn't align with research coverage
+- **Solution**: Prioritized major US stocks (AAPL, MSFT, NVDA, etc.) in both:
+  - Transaction generation (`build_fact_transaction`)
+  - Document generation (`generate_unstructured.py`)
+- **Result**: Coherent demo flow with aligned holdings and research
+
+### Snowpark Quoted Identifier Issue (DOCUMENTED)
+**Issue**: `session.write_pandas()` creates quoted column identifiers even with `quote_identifiers=False`
+**Impact**: Subsequent Snowpark operations fail with "invalid identifier" errors
+**Workaround**: Use optimized pandas + Snowpark hybrid approach when this occurs
+**Future**: Investigate Snowflake/Snowpark version compatibility for resolution
+
+### Real Asset Integration Best Practices
+
+#### 1. **Function Structure Template**
+```python
+def build_real_asset_function(session: Session, targets: dict):
+    """Template for real asset integration functions"""
+    
+    # Step 1: Try to load real assets
+    try:
+        from extract_real_assets import load_real_assets_from_csv
+        real_assets_df = load_real_assets_from_csv()
+        
+        if real_assets_df is None:
+            print("⚠️ Real assets CSV not found, falling back to synthetic data")
+            return build_synthetic_fallback(session, targets)
+            
+    except Exception as e:
+        print(f"⚠️ Error loading real assets: {e}, falling back to synthetic data")
+        return build_synthetic_fallback(session, targets)
+    
+    # Step 2: Process real assets (use appropriate pattern)
+    # Pattern 1: Full Snowpark or Pattern 2: Hybrid approach
+    
+    # Step 3: Handle data gaps with synthetic supplements if needed
+    
+    # Step 4: Validate and report results
+```
+
+#### 2. **Error Resilience Requirements**
+- Always provide synthetic fallback when real data unavailable
+- Handle pandas NaN values with explicit checks
+- Use try/catch blocks around real asset operations
+- Report actual vs target counts for transparency
+
+#### 3. **Performance Optimization Rules**
+- **Prefer SQL generation** for large datasets when possible
+- **Use vectorized pandas operations** instead of row-by-row iteration
+- **Batch database operations** using `session.create_dataframe()`
+- **Leverage temp tables** for intermediate processing when appropriate
+
+### Future Real Asset Integration
+
+#### Adding New Real Asset Functions
+When adding new functions that use real asset data:
+
+1. **Choose Optimization Pattern**: Start with Pattern 1 (Full Snowpark), fallback to Pattern 2 if needed
+2. **Implement Safe NaN Handling**: Use established patterns for string operations
+3. **Provide Synthetic Fallback**: Always include alternative when real data unavailable
+4. **Test End-to-End**: Verify with actual CSV data and missing CSV scenarios
+5. **Document Performance**: Report data volumes and processing efficiency
+
+#### Adding New Real Data Sources
+When integrating additional real data sources:
+
+1. **Follow CSV Pattern**: Store in `PROJECT_ROOT/data/` directory
+2. **Add Configuration**: Update `config.py` with new paths and flags
+3. **Implement Extraction**: Create extraction function in `extract_real_assets.py`
+4. **Add CLI Support**: Update `main.py` with extraction flag
+5. **Create Optimization**: Apply appropriate optimization pattern to processing functions
+
+## Real Market Data Integration (IMPLEMENTED)
+
+### Current Status
+**Status**: ✅ Fully implemented and operational
+
+**Configuration**:
+```python
+# Real market data settings (in config.py)
+USE_REAL_MARKET_DATA = True  # Use real OHLCV data when available
+REAL_MARKET_DATA_CSV_PATH = '../data/real_market_data.csv'
+EXTRACT_REAL_MARKET_DATA = False  # Set to True to extract from Marketplace
+```
+
+**Working Commands**:
+```bash
+# Extract real market data (requires Marketplace access)
+python main.py --extract-real-market-data
+
+# Build with real market data integration (automatic when CSV exists)
+python main.py --test-mode
+```
+
+### Implementation Results
+- ✅ **Extraction**: 10,000 real market records for 21 securities
+- ✅ **Integration**: 4M+ total records with real/synthetic blend  
+- ✅ **Performance**: No degradation in build times
+- ✅ **Quality**: Proper OHLCV validation and null handling
+- ✅ **Benefits**: Real market volatility patterns and authentic trading behavior
+
+## Implementation Status (COMPLETED)
+
+### Phase 1: Data Extraction ✅
+**File**: `python/extract_real_assets.py`
+- ✅ `extract_real_market_data()` function implemented
+- ✅ `load_real_market_data_from_csv()` function added
+- ✅ Smart ticker filtering (excludes company names, BBG IDs)
+- ✅ Query optimization for better data availability
+- ✅ Tested: 10,000 records extracted for 21 securities
+
+### Phase 2: Integration ✅
+**File**: `python/generate_structured.py`
+- ✅ `build_market_data_history()` enhanced with real data detection
+- ✅ `build_market_data_from_real_prices()` implemented
+- ✅ `build_market_data_synthetic()` preserved as fallback
+- ✅ Hybrid approach using `COALESCE()` for real/synthetic blending
+- ✅ Tested: 4M+ records with 1.3% real data, 98.7% synthetic
+
+### Phase 3: Configuration ✅
+**File**: `python/config.py`
+- ✅ `USE_REAL_MARKET_DATA = True` (enabled by default)
+- ✅ `REAL_MARKET_DATA_CSV_PATH` configuration
+- ✅ `EXTRACT_REAL_MARKET_DATA = False` (CLI override)
+- ✅ Exchange list and date range configuration
+
+### CLI Integration ✅
+**File**: `python/main.py`
+- ✅ `--extract-real-market-data` flag implemented
+- ✅ Early return logic for extraction commands
+- ✅ Proper error handling and user guidance
+- ✅ Integration with existing CLI structure
+
+### Key Implementation Lessons
+
+#### Data Source Challenges Solved
+- **Issue**: Real assets CSV only contained APAC/EM and EU regions, no USA entries
+- **Solution**: Modified extraction to use all equity regions, filter by ticker format
+- **Learning**: Always validate data structure before implementing extraction logic
+
+#### Query Optimization Required
+- **Issue**: Initial query too restrictive (exchange filters, asset class, date range)
+- **Solution**: Simplified query, reduced date range to 2 years, removed strict filters
+- **Learning**: Start with broad queries and narrow down based on data availability
+
+#### Integration Architecture
+- **Pattern**: Use temporary tables for efficient real data processing
+- **Approach**: `COALESCE()` function for seamless real/synthetic blending
+- **Fallback**: Always provide synthetic alternative when real data unavailable
+- **Statistics**: Report real vs synthetic data usage for transparency
+
+### Working Commands
+```bash
+# Extract real market data (requires Marketplace access)
+python main.py --extract-real-market-data
+
+# Build with real market data integration (automatic when CSV exists)
+python main.py --test-mode
+
+# Check real market data file
+ls -la ../data/real_market_data.csv
+```
+
+### Validated Results
+- ✅ **Extraction**: 10,000 real market records for 21 securities
+- ✅ **Integration**: 4M+ total records with real/synthetic blend
+- ✅ **Performance**: No degradation in build times
+- ✅ **Quality**: Proper OHLCV validation and null handling
+- ✅ **Reporting**: Clear statistics on real vs synthetic data usage
