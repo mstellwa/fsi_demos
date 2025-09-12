@@ -153,7 +153,7 @@ python main.py --scope data
 -- Core Dimension Tables
 DIM_ISSUER                    -- Corporate hierarchies and issuer relationships
 DIM_SECURITY                  -- Immutable SecurityID with cross-reference
-DIM_SECURITY_IDENTIFIER_XREF  -- Full symbology spine (TICKER, CUSIP, ISIN, FIGI)
+DIM_SECURITY_IDENTIFIER_XREF  -- Security identifier cross-reference (TICKER, FIGI)
 DIM_PORTFOLIO                 -- Enhanced portfolio information
 DIM_BENCHMARK                 -- Benchmark reference data
 

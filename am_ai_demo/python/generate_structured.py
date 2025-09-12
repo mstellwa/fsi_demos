@@ -414,37 +414,17 @@ def add_synthetic_securities(security_data: list, xref_data: list, start_securit
             'IsActive': True
         })
         
-        # Create cross-reference entries
+        # Create cross-reference entry with TICKER only for synthetic securities
         base_xref_id = len(xref_data) + 1
-        xref_data.extend([
-            {
-                'SecurityIdentifierID': base_xref_id,
-                'SecurityID': security_id,
-                'IdentifierType': 'TICKER',
-                'IdentifierValue': ticker,
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            },
-            {
-                'SecurityIdentifierID': base_xref_id + 1,
-                'SecurityID': security_id,
-                'IdentifierType': 'CUSIP',
-                'IdentifierValue': f"{abs(hash(ticker)) % 100000000:08d}",
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            },
-            {
-                'SecurityIdentifierID': base_xref_id + 2,
-                'SecurityID': security_id,
-                'IdentifierType': 'ISIN',
-                'IdentifierValue': f"US{abs(hash(ticker)) % 1000000000:09d}",
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            }
-        ])
+        xref_data.append({
+            'SecurityIdentifierID': base_xref_id,
+            'SecurityID': security_id,
+            'IdentifierType': 'TICKER',
+            'IdentifierValue': ticker,
+            'EffectiveStartDate': datetime(2010, 1, 1).date(),
+            'EffectiveEndDate': datetime(2099, 12, 31).date(),
+            'IsPrimaryForType': True
+        })
     
     return start_security_id + count
 

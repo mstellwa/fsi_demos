@@ -162,7 +162,7 @@ DOCUMENT_TYPES = {
 
 1. **Consistency**: Always follow the established pattern for similar objects
 2. **Clarity**: Names should be self-documenting and business-friendly
-3. **No Abbreviations**: Avoid abbreviations except industry-standard ones (USD, ABOR, CUSIP)
+3. **No Abbreviations**: Avoid abbreviations except industry-standard ones (USD, ABOR, FIGI)
 4. **Case Sensitivity**: Use UPPERCASE for SQL objects, PascalCase for columns
 5. **Reserved Words**: Never use Snowflake reserved words (documented above)
 6. **Length Limits**: Keep names reasonable (< 64 chars for most databases)

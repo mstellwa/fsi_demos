@@ -25,7 +25,7 @@ Complete documentation of the enhanced data architecture, schemas, and relations
 -- Master security dimension with immutable SecurityID
 DIM_SECURITY               -- 500 securities with immutable SecurityID
 DIM_ISSUER                 -- 50 issuers with corporate hierarchies
-DIM_SECURITY_IDENTIFIER_XREF -- Full symbology spine (TICKER, CUSIP, ISIN, FIGI)
+DIM_SECURITY_IDENTIFIER_XREF -- Security identifier cross-reference (TICKER, FIGI)
 DIM_PORTFOLIO              -- 10 portfolios with enhanced information
 DIM_BENCHMARK              -- 3 benchmarks (S&P 500, MSCI ACWI, Nasdaq 100)
 ```

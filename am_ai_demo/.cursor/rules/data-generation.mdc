@@ -43,7 +43,7 @@ DIM_SECURITY (
 DIM_SECURITY_IDENTIFIER_XREF (
     SecurityIdentifierID BIGINT IDENTITY(1,1) PRIMARY KEY,
     SecurityID BIGINT NOT NULL,
-    IdentifierType VARCHAR(50) NOT NULL,          -- 'CUSIP', 'ISIN', 'SEDOL', 'FIGI', 'TICKER'
+    IdentifierType VARCHAR(50) NOT NULL,          -- 'TICKER', 'FIGI'
     IdentifierValue VARCHAR(100) NOT NULL,
     EffectiveStartDate DATE NOT NULL,
     EffectiveEndDate DATE NOT NULL,
@@ -191,7 +191,7 @@ def build_security_xref_from_real_data(session: Session, real_assets_df: pd.Data
             },
             {
                 'SecurityID': security_id,
-                'IdentifierType': 'CUSIP',
+                'IdentifierType': 'FIGI',
                 'IdentifierValue': f"{abs(hash(ticker)) % 100000000:08d}",
                 'EffectiveStartDate': datetime(2010, 1, 1).date(),
                 'EffectiveEndDate': datetime(2099, 12, 31).date(),
@@ -472,7 +472,7 @@ def validate_enhanced_data_quality(session: Session):
         FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF
         WHERE CURRENT_DATE BETWEEN EffectiveStartDate AND EffectiveEndDate
         GROUP BY SecurityID
-        HAVING COUNT(DISTINCT IdentifierType) < 3  -- Should have at least TICKER, CUSIP, ISIN
+        HAVING COUNT(DISTINCT IdentifierType) < 2  -- Should have at least TICKER, FIGI
     """).collect()
 ```
 
