@@ -7,12 +7,12 @@ class DemoConfig:
     # --- Data Volume and Scope ---
     NUM_COMPANIES = 15
     NUM_CLIENTS = 25
-    DATE_RANGE_START = "2024-01-01"
-    DATE_RANGE_END = "2024-12-31"
     
     # --- Time Series Configuration ---
     # Number of historical quarters to generate (configurable)
     NUM_HISTORICAL_QUARTERS = 8
+    # Number of years of data to generate (calculated from quarters, but can be overridden)
+    NUM_HISTORICAL_YEARS = 2
     # Generate data dynamically based on current date when setup runs
     
     # --- Company & Market Data Configuration ---

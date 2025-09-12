@@ -155,10 +155,10 @@ Edit `config.py` to customize:
 
 ```python
 # Data volume
-NUM_COMPANIES = 15        # Number of companies to generate
-NUM_CLIENTS = 25          # Number of client profiles
-DATE_RANGE_START = "2024-01-01"
-DATE_RANGE_END = "2024-12-31"
+NUM_COMPANIES = 15               # Number of companies to generate
+NUM_CLIENTS = 25                 # Number of client profiles
+NUM_HISTORICAL_QUARTERS = 8     # Number of quarters to generate (dynamic)
+NUM_HISTORICAL_YEARS = 2        # Number of years of data (calculated from quarters)
 
 # AI model
 CORTEX_MODEL_NAME = "llama3.1-70b"

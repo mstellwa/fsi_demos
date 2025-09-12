@@ -405,7 +405,7 @@ def generate_portfolio_data(session: Session) -> None:
                     "TICKER": ticker,
                     "QUANTITY": quantity,
                     "MARKET_VALUE": round(market_value, 2),
-                    "AS_OF_DATE": DemoConfig.DATE_RANGE_END
+                    "AS_OF_DATE": get_dynamic_date_range()[1].strftime("%Y-%m-%d")  # Use end of dynamic range
                 })
     
     holdings_df = session.create_dataframe(holdings_data)

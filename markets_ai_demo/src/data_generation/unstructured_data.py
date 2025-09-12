@@ -12,7 +12,7 @@ from snowflake.cortex import complete
 # Add the src directory to the path for relative imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from config import DemoConfig
-from utils.date_utils import get_historical_quarters
+from utils.date_utils import get_historical_quarters, get_dynamic_date_range
 
 
 def get_current_and_previous_quarters():
@@ -429,7 +429,10 @@ def generate_research_reports(session: Session) -> None:
     ]
     
     for i, report in enumerate(thematic_reports):
-        pub_date = datetime.strptime(DemoConfig.DATE_RANGE_START, "%Y-%m-%d") + timedelta(days=random.randint(30, 300))
+        # Use dynamic date range for publication dates
+        start_date, end_date = get_dynamic_date_range()
+        random_days = random.randint(30, (end_date - start_date).days - 30)  # Leave some buffer
+        pub_date = start_date + timedelta(days=random_days)
         
         prompt = f"""You are a senior research analyst at Frost Markets Intelligence writing an authoritative research report.
 

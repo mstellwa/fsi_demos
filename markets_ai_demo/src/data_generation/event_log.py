@@ -5,7 +5,13 @@ import random
 from datetime import datetime, timedelta
 from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col
+import sys
+import os
+
+# Add the src directory to the path for relative imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from config import DemoConfig
+from utils.date_utils import get_dynamic_date_range
 
 
 def generate_master_event_log(session: Session) -> None:
@@ -33,9 +39,8 @@ def generate_master_event_log(session: Session) -> None:
     events = []
     event_templates = _get_event_templates()
     
-    # Generate events spread across the year
-    start_date = datetime.strptime(DemoConfig.DATE_RANGE_START, "%Y-%m-%d")
-    end_date = datetime.strptime(DemoConfig.DATE_RANGE_END, "%Y-%m-%d")
+    # Generate events spread across the dynamic date range
+    start_date, end_date = get_dynamic_date_range()
     
     for i in range(DemoConfig.NUM_MAJOR_EVENTS):
         # Pick random date and ticker
