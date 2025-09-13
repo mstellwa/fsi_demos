@@ -73,7 +73,7 @@ SELECT 'Transactions', COUNT(*) FROM SAM_DEMO.CURATED.FACT_TRANSACTION;
 -- 5. Check real market data integration (if enabled)
 SELECT 
     COUNT(*) as total_records,
-    COUNT(DISTINCT s.PRIMARYTICKER) as total_securities
+    COUNT(DISTINCT s.Ticker) as total_securities
 FROM SAM_DEMO.CURATED.FACT_MARKETDATA_TIMESERIES m
 JOIN SAM_DEMO.CURATED.DIM_SECURITY s ON m.SecurityID = s.SecurityID;
 ```

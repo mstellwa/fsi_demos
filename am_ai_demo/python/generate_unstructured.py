@@ -69,7 +69,7 @@ def generate_prompts(session: Session, document_types: List[str], test_mode: boo
     securities = session.sql(f"""
         SELECT 
             ds.SecurityID,
-            xref.IdentifierValue as TICKER,
+            ds.Ticker,
             ds.Description as COMPANY_NAME,
             di.GICS_Sector,
             ds.AssetClass,
@@ -78,20 +78,17 @@ def generate_prompts(session: Session, document_types: List[str], test_mode: boo
             di.LegalName as ISSUER_NAME
         FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY ds
         JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER di ON ds.IssuerID = di.IssuerID
-        JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON ds.SecurityID = xref.SecurityID
-        WHERE xref.IdentifierType = 'TICKER' 
-        AND xref.IsPrimaryForType = TRUE
-        AND ds.AssetClass = 'Equity'
+        WHERE ds.AssetClass = 'Equity'
         ORDER BY 
             -- Prioritize major US stocks that are in portfolios and demo scenarios
             CASE 
-                WHEN xref.IdentifierValue IN ('AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NFLX', 'CRM', 'ORCL') THEN 1
-                WHEN xref.IdentifierValue RLIKE '^[A-Z]{{1,5}}$' AND LENGTH(xref.IdentifierValue) <= 5 THEN 2  -- Other real US tickers
-                WHEN xref.IdentifierValue RLIKE '^(EQ|CB|ETF)[0-9]+$' THEN 4  -- Synthetic tickers
+                WHEN ds.Ticker IN ('AAPL', 'CMC', 'RBBN', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NFLX', 'CRM', 'ORCL') THEN 1
+                WHEN ds.Ticker RLIKE '^[A-Z]{{1,5}}$' AND LENGTH(ds.Ticker) <= 5 THEN 2  -- Other real US tickers
+                WHEN ds.Ticker RLIKE '^(EQ|CB|ETF)[0-9]+$' THEN 4  -- Synthetic tickers (shouldn't exist anymore)
                 ELSE 3  -- Other real tickers
             END,
             -- Then order alphabetically within each group
-            xref.IdentifierValue
+            ds.Ticker
     """).collect()
     
     prompt_data = []

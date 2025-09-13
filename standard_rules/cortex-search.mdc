@@ -1,0 +1,96 @@
+---
+description: Cortex Search Service Creation Patterns and Best Practices
+globs: ["**/*.sql", "**/*.py"]
+alwaysApply: true
+---
+# Cortex Search Service Creation Standards
+## Search Service Creation
+
+### Correct Syntax Format (CRITICAL)
+
+**Service Creation Pattern:**
+```sql
+CREATE OR REPLACE CORTEX SEARCH SERVICE <database>.<schema>.<service_name>
+    ON <content_column>
+    ATTRIBUTES <id_column>, <title_column>, <attribute_columns>
+    WAREHOUSE = <warehouse_name>
+    TARGET_LAG = '<time_period>'
+    AS 
+    SELECT 
+        <id_column>,
+        <title_column>,
+        <content_column>,
+        <attribute_columns>
+    FROM <corpus_table>
+```
+
+**Critical Requirements:**
+- **ATTRIBUTES must match SELECT columns**: If SELECT has `TITLE`, ATTRIBUTES must include `TITLE`
+- **ON content_column**: Specify the searchable content column
+- **WAREHOUSE is mandatory**: Use dedicated warehouse or `CURRENT_WAREHOUSE()`
+- **AS SELECT pattern**: Complete SELECT with proper column aliases
+- **TARGET_LAG considerations**: Use '5 minutes'
+
+## Validation and Testing
+
+### Basic Service Validation
+```sql
+-- 1. Verify service was created
+SHOW CORTEX SEARCH SERVICES IN <database>.<schema>;
+
+-- 2. Check service details
+DESCRIBE CORTEX SEARCH SERVICE {database}.{schema}.{service_name};
+```
+
+### Search Testing (MANDATORY)
+Test search services systematically:
+
+**Testing Strategy:**
+1. **Basic Search**: Simple query to verify functionality
+2. **Content Relevance**: Test with domain-specific queries
+3. **Filter Testing**: Test attribute-based filtering (if applicable)
+4. **Edge Cases**: Test with empty results, complex queries
+
+**Testing Pattern:**
+```sql
+-- Basic functionality test
+SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+    '{service_name}',
+    '{"query": "test query", "limit": 1}'
+);
+
+-- Domain-specific test
+SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+    '{service_name}',
+    '{"query": "{relevant_business_term}", "limit": 3}'
+);
+
+```
+
+### Validation Checklist
+- [ ] Search service created without errors
+- [ ] `SHOW CORTEX SEARCH SERVICES` lists the service
+- [ ] Basic search returns results
+- [ ] Domain-specific searches return relevant content
+- [ ] Attribute filtering works (if applicable)
+- [ ] No performance issues during search
+
+## Troubleshooting
+
+### Common Error Messages and Solutions
+
+**"Missing option WAREHOUSE"**
+- **Cause**: WAREHOUSE parameter not specified
+- **Solution**: Add `WAREHOUSE = <warehouse_name>` to service definition
+
+**"invalid identifier"**
+- **Cause**: ATTRIBUTES don't match SELECT column aliases
+- **Solution**: Ensure ATTRIBUTES exactly match SELECT column names/aliases
+
+**"table not found"**
+- **Cause**: Corpus table doesn't exist or not accessible
+- **Solution**: Verify corpus table exists with `SELECT COUNT(*) FROM {corpus_table}`
+
+**"syntax error"**
+- **Cause**: Incorrect AS SELECT pattern or column mappings
+- **Solution**: Verify AS SELECT syntax and column aliases

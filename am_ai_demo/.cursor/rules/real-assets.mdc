@@ -300,18 +300,24 @@ def safe_string_operations(asset_row):
 def build_real_asset_function(session: Session, targets: dict):
     """Template for real asset integration functions"""
     
-    # Step 1: Load real assets (required - no fallback)
-    try:
-        from extract_real_assets import load_real_assets_from_csv
-        real_assets_df = load_real_assets_from_csv()
-        
-        if real_assets_df is None:
-            raise Exception("Real assets CSV not found - required for real-only mode")
+    # Step 1: Load real assets (use TEMP_REAL_ASSETS pattern if multiple functions need data)
+    # See TEMP_REAL_ASSETS Table Reuse Pattern section above for optimization
+    if check_temp_real_assets_exists(session):
+        print("✅ Reusing existing TEMP_REAL_ASSETS table (optimization)")
+        real_assets_df = session.table("TEMP_REAL_ASSETS").to_pandas()
+    else:
+        print("📥 Loading real assets from CSV")
+        try:
+            from extract_real_assets import load_real_assets_from_csv
+            real_assets_df = load_real_assets_from_csv()
             
-    except Exception as e:
-        print(f"❌ Error loading real assets: {e}")
-        print("   To fix: Run 'python main.py --extract-real-assets' first")
-        raise
+            if real_assets_df is None:
+                raise Exception("Real assets CSV not found - required for real-only mode")
+                
+        except Exception as e:
+            print(f"❌ Error loading real assets: {e}")
+            print("   To fix: Run 'python main.py --extract-real-assets' first")
+            raise
     
     # Step 2: Process real assets (use appropriate pattern)
     # Pattern 1: Full Snowpark or Pattern 2: Hybrid approach
@@ -332,15 +338,81 @@ def build_real_asset_function(session: Session, targets: dict):
 - **Use vectorized pandas operations** instead of row-by-row iteration
 - **Batch database operations** using `session.create_dataframe()`
 - **Leverage temp tables** for intermediate processing when appropriate
+- **Reuse TEMP_REAL_ASSETS table** across multiple functions to avoid duplicate CSV loading
 
 ### Future Real Asset Integration
+
+#### TEMP_REAL_ASSETS Table Reuse Pattern (MANDATORY)
+**Use Case**: When multiple functions need real asset data in sequence
+**Benefit**: Eliminates duplicate CSV loading (92,573 records, ~24MB file)
+
+```python
+# Helper function (add once to module)
+def check_temp_real_assets_exists(session: Session) -> bool:
+    """Check if TEMP_REAL_ASSETS table exists in the session."""
+    try:
+        session.sql("SELECT 1 FROM TEMP_REAL_ASSETS LIMIT 1").collect()
+        return True
+    except Exception:
+        return False
+
+# First function: Creates temp table
+def build_first_function_from_real_data(session: Session):
+    """First function that loads real assets and creates temp table."""
+    
+    # Load real assets from CSV
+    from extract_real_assets import load_real_assets_from_csv
+    real_assets_df_pandas = load_real_assets_from_csv()
+    
+    # Create temp table for reuse by other functions
+    real_assets_df = session.write_pandas(
+        real_assets_df_pandas,
+        table_name="TEMP_REAL_ASSETS",
+        quote_identifiers=False,
+        auto_create_table=True, 
+        table_type="temp"
+    )
+    print("✅ Created TEMP_REAL_ASSETS table for reuse by other functions")
+    
+    # Process data...
+
+# Subsequent functions: Reuse temp table
+def build_subsequent_function_from_real_data(session: Session):
+    """Subsequent function that reuses existing temp table."""
+    
+    # Check if TEMP_REAL_ASSETS table already exists
+    if check_temp_real_assets_exists(session):
+        print("✅ Reusing existing TEMP_REAL_ASSETS table (optimization)")
+        # Load from existing temp table
+        real_assets_df = session.table("TEMP_REAL_ASSETS").to_pandas()
+    else:
+        print("📥 Loading real assets from CSV (TEMP_REAL_ASSETS not found)")
+        # Fallback: Load from CSV
+        from extract_real_assets import load_real_assets_from_csv
+        real_assets_df = load_real_assets_from_csv()
+    
+    # Process data...
+```
+
+**Implementation Rules**:
+1. **First function** in execution order creates `TEMP_REAL_ASSETS` table
+2. **Subsequent functions** check for existing table before loading CSV
+3. **Always provide fallback** to CSV loading if temp table doesn't exist
+4. **Use clear logging** to indicate optimization vs fallback paths
+5. **Maintain error handling** for both temp table and CSV loading scenarios
+
+**Execution Order Dependency**:
+- Current implementation: `build_dim_issuer` → `build_dim_security`
+- First function (`build_dim_issuer`) creates temp table
+- Second function (`build_dim_security`) reuses temp table
+- **Important**: If execution order changes, update which function creates the temp table
 
 #### Adding New Real Asset Functions
 When adding new functions that use real asset data:
 
-1. **Choose Optimization Pattern**: Start with Pattern 1 (Full Snowpark), fallback to Pattern 2 if needed
-2. **Implement Safe NaN Handling**: Use established patterns for string operations
-3. **Provide Synthetic Fallback**: Always include alternative when real data unavailable
+1. **Use TEMP_REAL_ASSETS Pattern**: Follow the mandatory temp table reuse pattern above
+2. **Choose Optimization Pattern**: Start with Pattern 1 (Full Snowpark), fallback to Pattern 2 if needed
+3. **Implement Safe NaN Handling**: Use established patterns for string operations
 4. **Test End-to-End**: Verify with actual CSV data and missing CSV scenarios
 5. **Document Performance**: Report data volumes and processing efficiency
 

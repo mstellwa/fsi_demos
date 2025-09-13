@@ -23,11 +23,12 @@ This guide covers the enhanced data model with 14,000+ real securities, immutabl
 
 ### 1.1 Core Dimension Tables (Industry Standard)
 ```sql
--- Master security dimension with immutable SecurityID
+-- Master security dimension with immutable SecurityID and direct identifiers
 DIM_SECURITY (
     SecurityID BIGINT IDENTITY(1,1) PRIMARY KEY,  -- Immutable surrogate key
     IssuerID BIGINT NOT NULL,                     -- FK to DIM_ISSUER
-    PrimaryTicker VARCHAR(50),                    -- Current primary ticker
+    Ticker VARCHAR(50) NOT NULL,                  -- Real ticker from OpenFIGI dataset
+    FIGI VARCHAR(50),                             -- Real FIGI from OpenFIGI (only authentic external ID)
     Description VARCHAR(255),
     AssetClass VARCHAR(50),                       -- 'Equity', 'Corporate Bond', 'ETF'
     SecurityType VARCHAR(100),
@@ -38,17 +39,6 @@ DIM_SECURITY (
     RecordStartDate TIMESTAMP_NTZ,
     RecordEndDate TIMESTAMP_NTZ,
     IsActive BOOLEAN
-)
-
--- Security identifier cross-reference ("symbology spine")
-DIM_SECURITY_IDENTIFIER_XREF (
-    SecurityIdentifierID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    SecurityID BIGINT NOT NULL,
-    IdentifierType VARCHAR(50) NOT NULL,          -- 'TICKER', 'FIGI'
-    IdentifierValue VARCHAR(100) NOT NULL,
-    EffectiveStartDate DATE NOT NULL,
-    EffectiveEndDate DATE NOT NULL,
-    IsPrimaryForType BOOLEAN
 )
 
 -- Issuer dimension with corporate hierarchies
@@ -134,8 +124,8 @@ def build_foundation_tables(session: Session, test_mode: bool = False):
     # Step 1: Build issuer dimension first (no dependencies)
     build_dim_issuer(session, test_mode)
     
-    # Step 2: Build security dimension with cross-reference (depends on issuers)
-    build_dim_security_with_xref(session, test_mode)
+    # Step 2: Build security dimension with direct identifiers (depends on issuers)
+    build_dim_security(session, test_mode)
     
     # Step 3: Build portfolio and benchmark dimensions
     build_dim_portfolio(session)
@@ -175,30 +165,21 @@ def build_dim_issuer_from_real_data(session: Session):
     issuers_df = session.create_dataframe(issuer_data)
     issuers_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.CURATED.DIM_ISSUER")
 
-def build_security_xref_from_real_data(session: Session, real_assets_df: pd.DataFrame):
-    """Build identifier cross-reference from real asset data."""
+def build_security_from_real_data(session: Session, real_assets_df: pd.DataFrame):
+    """Build securities with direct TICKER and FIGI columns from real asset data."""
     
-    xref_data = []
-    for security_id, ticker in enumerate(real_tickers, 1):
-        # Create multiple identifier types for each security
-        xref_data.extend([
-            {
-                'SecurityID': security_id,
-                'IdentifierType': 'TICKER',
-                'IdentifierValue': ticker,
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            },
-            {
-                'SecurityID': security_id,
-                'IdentifierType': 'FIGI',
-                'IdentifierValue': f"{abs(hash(ticker)) % 100000000:08d}",
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            }
-        ])
+    security_data = []
+    for security_id, asset in enumerate(real_assets, 1):
+        # Create security record with direct identifier columns
+        security_data.append({
+            'SecurityID': security_id,
+            'IssuerID': asset['issuer_id'],
+            'Ticker': asset['PRIMARY_TICKER'],
+            'FIGI': asset.get('TOP_LEVEL_OPENFIGI_ID', f"BBG{abs(hash(asset['PRIMARY_TICKER'])) % 1000000:06d}"),
+            'Description': asset['SECURITY_NAME'],
+            'AssetClass': asset['ASSET_CATEGORY'],
+            'IsActive': True
+        })
 ```
 
 ### 2.3 Transaction-Based Holdings Generation
@@ -324,15 +305,11 @@ def build_fact_marketdata_timeseries(session: Session):
             securities_dates AS (
                 SELECT 
                     s.SecurityID,
-                    xref.IdentifierValue as TICKER,
+                    s.Ticker,
                     s.AssetClass,
                     bd.price_date as PriceDate
                 FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
-                JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref 
-                    ON s.SecurityID = xref.SecurityID
                 CROSS JOIN business_dates bd
-                WHERE xref.IdentifierType = 'TICKER' 
-                AND xref.IsPrimaryForType = TRUE
             ),
             real_data AS (
                 SELECT 
@@ -453,20 +430,20 @@ def validate_enhanced_data_quality(session: Session):
         AND ABS(p.Quantity - tb.TransactionQuantity) > 0.01
     """).collect()
     
-    # 3. Validate security identifier cross-reference integrity
-    xref_check = session.sql(f"""
-        SELECT COUNT(*) as incomplete_securities
-        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF
-        WHERE CURRENT_DATE BETWEEN EffectiveStartDate AND EffectiveEndDate
-        GROUP BY SecurityID
-        HAVING COUNT(DISTINCT IdentifierType) < 2  -- Should have at least TICKER, FIGI
+    # 3. Validate security identifier integrity (simplified - direct columns)
+    security_check = session.sql(f"""
+        SELECT 
+            COUNT(*) as total_securities,
+            COUNT(CASE WHEN Ticker IS NOT NULL AND LENGTH(Ticker) > 0 THEN 1 END) as securities_with_ticker,
+            COUNT(CASE WHEN FIGI IS NOT NULL AND LENGTH(FIGI) > 0 THEN 1 END) as securities_with_figi
+        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY
     """).collect()
 ```
 
 ### 5.2 Required Validations (Enhanced)
 - ✅ Portfolio weights sum to 100% (±0.1% tolerance)
 - ✅ Transaction log balances to position snapshots
-- ✅ Security identifier cross-reference integrity
+- ✅ Security identifier integrity (TICKER and FIGI columns populated)
 - ✅ Issuer hierarchy relationships valid
 - ✅ No negative prices or market values
 - ✅ Date ranges logical and consistent

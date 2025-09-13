@@ -24,9 +24,8 @@ Complete documentation of the data architecture using 14,000+ authentic securiti
 ### Core Dimension Tables (CURATED Schema)
 ```sql
 -- Master security dimension with immutable SecurityID (100% Real)
-DIM_SECURITY               -- 14,000 real securities from OpenFIGI dataset
+DIM_SECURITY               -- 14,000 real securities from OpenFIGI dataset with direct TICKER and FIGI columns
 DIM_ISSUER                 -- 3,303 real issuers with corporate hierarchies
-DIM_SECURITY_IDENTIFIER_XREF -- Security identifier cross-reference (TICKER, FIGI)
 DIM_PORTFOLIO              -- 10 portfolios with enhanced information
 DIM_BENCHMARK              -- 3 benchmarks (S&P 500, MSCI ACWI, Nasdaq 100)
 ```
@@ -84,7 +83,7 @@ PRESS_RELEASES_CORPUS      -- 35 corporate press releases with SecurityID linkag
 - `PORTFOLIO_WEIGHT_PCT`: Portfolio weight as percentage
 
 **Key Dimensions**:
-- `PORTFOLIONAME`, `DESCRIPTION`, `PRIMARYTICKER`, `LEGALNAME`, `GICS_SECTOR`
+- `PORTFOLIONAME`, `DESCRIPTION`, `TICKER`, `LEGALNAME`, `GICS_SECTOR`
 
 ### Enhanced Search Services
 - `SAM_BROKER_RESEARCH`: Search analyst reports with SecurityID/IssuerID attributes
@@ -104,7 +103,7 @@ PRESS_RELEASES_CORPUS      -- 35 corporate press releases with SecurityID linkag
 ### Validation Results
 ✅ **Portfolio Weights**: Sum to 100% (±0.1% tolerance)  
 ✅ **Transaction Integrity**: Transaction log balances to ABOR positions  
-✅ **Identifier Cross-Reference**: Security identifier relationships validated  
+✅ **Security Identifiers**: TICKER and FIGI columns properly populated  
 ✅ **Price Data**: No negative prices, realistic ranges by asset class  
 ✅ **Date Consistency**: Business days only, proper date ranges  
 ✅ **Foreign Key Relationships**: All relationships valid and tested  
@@ -112,7 +111,7 @@ PRESS_RELEASES_CORPUS      -- 35 corporate press releases with SecurityID linkag
 ### Enhanced Validation Capabilities
 ✅ **Transaction Balancing**: FACT_TRANSACTION sums to FACT_POSITION_DAILY_ABOR  
 ✅ **Issuer Hierarchy**: Corporate relationships properly established  
-✅ **SecurityID Integrity**: Cross-reference table properly populated  
+✅ **SecurityID Integrity**: Direct TICKER and FIGI columns validated  
 ✅ **Document Linkage**: Stable SecurityID/IssuerID linkage validated  
 
 ## Sample Data Highlights

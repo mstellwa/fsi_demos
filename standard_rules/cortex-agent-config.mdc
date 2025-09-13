@@ -1,0 +1,63 @@
+---
+description: Snowflake Cortex Agents Setup Instructions Patterns and Best Practices
+globs: ["**/*.md"]
+alwaysApply: true
+---
+# Snowflake Cortex Agent Setup Instructions Standards
+
+## Agent Architecture
+- **Separate agents**: One per demo scenario for maximum modularity
+- **Multiple tools per agent**: Combine Cortex Analyst + Cortex Search as needed
+- **Deterministic behavior**: Use specific tool descriptions and when-to-use rules
+
+## Agent Naming Pattern
+- Scenario-based names: "Earnings_Analysis_Agent", "Thematic_Research_Agent", etc.
+- Display names: User-friendly versions for the UI
+- Descriptions: Clear business context and capabilities
+
+## Standard Agent Template
+```
+Agent Name: {scenario_name}_agent
+Display Name: {User Friendly Name}
+Description: {Business context and capabilities}
+Response Instructions: {Tone, format, and output guidelines}
+
+
+Tools:
+  - {semantic_view_name} (Cortex Analyst)
+  - search_{document_type} (Cortex Search)
+
+Orchestration Model: Claude 4
+Planning Instructions: {Specific tool selection logic with when-to-use rules}
+```
+
+## Tool Description Requirements
+- **Cortex Analyst tools**: Specify exactly what data/metrics are available and for what type of analysis it can be used
+- **Cortex Search tools**: Specify document types and search capabilities
+- **When-to-use rules**: Clear conditions for tool selection
+
+## Instruction Guidelines
+- **Planning Instructions**: Focus on tool selection logic
+- **Response Instructions**: Define tone, format, citation requirements
+- **Deterministic logic**: Avoid ambiguous guidance, use explicit decision trees
+- **Demo-ready**: Instructions should ensure consistent, impressive response
+
+## Tool Configuration Patterns
+
+### Cortex Analyst Tool Pattern
+```
+Tool Name: {analyst_tool_name} 
+Type: Cortex Analyst
+Semantic View: {DATABAS_NAME}].{SCHEMA}.{SEMANTIC_VIEW_NAME} 
+Description: "{Specify exactly what data/metrics are available and for what type of analysis it can be used}."
+```
+
+### Cortex Search Tool Pattern
+```
+Tool Name: search_{document_type}
+Type: Cortex Search
+Service: {DATABAS_NAME}.{SCHEMA}.{DOCUMENT_TYPE}         # e.g., SAM_BROKER_RESEARCH, SAM_POLICY_DOCS
+ID Column: {ID column in the cortex search service source table}
+Title Column: {Title column in the cortex search service source table}
+Description: "{Specify document types and search capabilities}."
+```

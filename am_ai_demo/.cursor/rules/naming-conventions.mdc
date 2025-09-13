@@ -12,7 +12,7 @@ Complete naming standards for database objects, columns, and code following indu
 - **Dimension Tables**: Use `DIM_` prefix
   - Examples: `DIM_SECURITY`, `DIM_ISSUER`, `DIM_PORTFOLIO`, `DIM_BENCHMARK`
   - Purpose: Store descriptive attributes and reference data
-  - Special case: `DIM_SECURITY_IDENTIFIER_XREF` for cross-reference tables
+  - Note: `DIM_SECURITY` includes direct TICKER and FIGI columns (no separate cross-reference table needed)
 
 - **Fact Tables**: Use `FACT_` prefix
   - Examples: `FACT_TRANSACTION`, `FACT_POSITION_DAILY_ABOR`, `FACT_MARKETDATA_TIMESERIES`

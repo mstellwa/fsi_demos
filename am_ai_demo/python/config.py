@@ -70,7 +70,7 @@ TEST_UNSTRUCTURED_COUNTS = {
 PORTFOLIO_LINEUP = [
     {'name': 'SAM Global Flagship Multi-Asset', 'benchmark': 'MSCI ACWI', 'aum_usd': 2.5e9},
     {'name': 'SAM ESG Leaders Global Equity', 'benchmark': 'MSCI ACWI', 'aum_usd': 1.8e9},
-    {'name': 'SAM Global Thematic Growth', 'benchmark': 'Nasdaq 100', 'aum_usd': 1.5e9},
+    {'name': 'SAM Technology & Infrastructure', 'benchmark': 'Nasdaq 100', 'aum_usd': 1.5e9},
     {'name': 'SAM US Core Equity', 'benchmark': 'S&P 500', 'aum_usd': 1.2e9},
     {'name': 'SAM Renewable & Climate Solutions', 'benchmark': 'Nasdaq 100', 'aum_usd': 1.0e9},
     {'name': 'SAM AI & Digital Innovation', 'benchmark': 'Nasdaq 100', 'aum_usd': 0.9e9},
@@ -171,12 +171,9 @@ EXTRACT_REAL_ASSETS = False  # Set to True to extract real assets from Snowflake
 REAL_ASSETS_CSV_PATH = os.path.join(PROJECT_ROOT, 'data', 'real_assets.csv')  # Always in project/data/
 USE_REAL_ASSETS_CSV = True  # Set to True to use existing CSV instead of generating fake data
 
-# Real market data settings
-USE_REAL_MARKET_DATA = True  # Use real OHLCV data when available
-REAL_MARKET_DATA_CSV_PATH = os.path.join(PROJECT_ROOT, 'data', 'real_market_data.csv')  # Always in project/data/
-EXTRACT_REAL_MARKET_DATA = True  # Set to True to extract from Marketplace
+# Market data settings (synthetic only - see bottom of file for final configuration)
 
-# Enhanced real asset to issuer mapping
+# Enhanced real asset to issuer mapping (LEGACY - not used since issuers are now generated from real asset data)
 REAL_ASSET_ISSUER_MAPPING = {
     'AAPL': {'legal_name': 'Apple Inc.', 'country': 'US', 'sector': 'Information Technology'},
     'MSFT': {'legal_name': 'Microsoft Corporation', 'country': 'US', 'sector': 'Information Technology'},
@@ -191,11 +188,7 @@ REAL_ASSET_ISSUER_MAPPING = {
     'NESTLE': {'legal_name': 'Nestlé S.A.', 'country': 'CH', 'sector': 'Consumer Staples'}
 }
 
-# Market data extraction settings
-MARKET_DATA_YEARS_HISTORY = 5  # Years of historical data to extract
-MARKET_DATA_EXCHANGES = [  # Target exchanges for data extraction
-    'NASDAQ', 'NEW YORK STOCK EXCHANGE', 'NYSE ARCA', 'NYSE MKT LLC', 'BATS Z-EXCHANGE'
-]
+# Market data extraction settings (not used - synthetic market data only)
 
 # Marketplace data source (requires subscription)
 MARKETPLACE_DATABASE = 'FINANCIALS_ECONOMICS_ENTERPRISE'
@@ -291,6 +284,7 @@ DOCUMENT_TYPES = {
     }
 }
 
-# Market data configuration (synthetic only)
-USE_REAL_MARKET_DATA = False  # Disabled: Generate synthetic market data for all securities
+# Market data configuration (FINAL - synthetic only)
+USE_REAL_MARKET_DATA = False  # Generate synthetic market data for all securities
 REAL_MARKET_DATA_CSV_PATH = None  # Not used in synthetic-only mode
+EXTRACT_REAL_MARKET_DATA = False  # Not extracting real market data

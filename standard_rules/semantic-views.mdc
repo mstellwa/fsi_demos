@@ -1,0 +1,130 @@
+---
+description: Semantic Views Creation Patterns and Best Practices
+globs: ["**/*.py", "**/*.sql"]
+alwaysApply: true
+---
+# Semantic Views Creation Standards
+
+Semantic views are required for Cortex Analyst to understand your data model. 
+
+Always create semantic views using SQL.
+
+## Semantic View Creation
+
+```sql
+CREATE OR REPLACE SEMANTIC VIEW {database}.{schema}.{semantic_view_name}
+TABLES (
+	<table_alias> AS <physical_table_name>
+    	PRIMARY KEY (column1, column2) 
+	    WITH SYNONYMS=('synonym1','synonym2') 
+    	COMMENT='Table description'
+)
+RELATIONSHIPS (
+	<relationship_name> AS <table_alias>(foreign_key_column) REFERENCES <table_alias>(primary_key_column)
+)
+FACTS (
+	<table_alias>.<fact_name> AS <physical_table_name column_name or sql_expr> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+)
+DIMENSIONS (
+	<table_alias>.<dimension_name> AS <physical_table_name column_name or sql_expr> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+
+)
+METRICS (
+	<table_alias>.<metric_name> AS <aggregation_function>(<physical_table_name column_name or sql_expr>) WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+)
+```
+
+**REQUIRED SECTIONS**: TABLES and at least one DIMENSIONS or METRCS section
+
+**TABLES**: Tables are logical tables that typically correspond to business entities, such as customers, portfolios, or accounts.
+**RELATIONSHIPS**:Relationships between logical tables through joins on shared keys, enabling to analyze data across entities
+**FACTS**: Facts are row-level attributes. Facts capture “how much” or “how many” at the most granular level, such as individual sales amounts, quantities purchased, or costs. It’s important to note that facts typically function as “helper” concepts within the semantic view to help construct dimensions and metrics.
+**METRICS**: Metrics are quantifiable measures calculated by aggregating facts or other columns from the same table. Examples include Total Revenue or Profit Margin Percentage.  A metric must use an aggregate function.
+**DIMENSIONS**: Dimensions represent categorical attributes.  They answer “who,” “what,” “where,” and “when” questions.
+
+### Correct Syntax Format (CRITICAL)
+
+Follow these exact patterns for ALL sections:
+
+**TABLES Section:**
+One or multiple
+```sql
+<table_alias> AS <physical_table_name>
+    PRIMARY KEY (column1, column2) 
+    WITH SYNONYMS=('synonym1','synonym2') 
+    COMMENT='Table description'
+```
+
+**RELATIONSHIPS Section:**
+One or multiple
+```sql
+<relationship_name> AS <table_alias>(foreign_key_column) REFERENCES <table_alias>(primary_key_column)
+```
+
+**DIMENSIONS Section:**
+One or multiple
+```sql
+<table_alias>.<dimension_name> AS <column_name> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+```
+
+**METRICS Section:**
+One or multiple
+```sql
+<table_alias>.<metric_name> AS <aggregation_function> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+```
+
+### CRITICAL SYNTAX RULES (Must Follow)
+```sql
+-- ✅ CORRECT table declaration
+HOLDINGS AS SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR
+
+-- ✅ CORRECT relationship declaration
+HOLDINGS_TO_PORTFOLIOS AS HOLDINGS(PORTFOLIOID) REFERENCES PORTFOLIOS(PORTFOLIOID)
+
+-- ✅ CORRECT dimension (NO PUBLIC keyword)
+PORTFOLIOS.PORTFOLIO_NAME AS PORTFOLIONAME WITH SYNONYMS=('fund_name','strategy_name')
+
+-- ✅ CORRECT metric (NO PUBLIC keyword)  
+HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('exposure','aum')
+
+-- ❌ WRONG table order
+SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR AS HOLDINGS
+
+-- ❌ WRONG dimension format with PUBLIC keyword
+PUBLIC SECURITIES.COMPANY_NAME AS securities.COMPANY_NAME
+
+-- ❌ WRONG metric format with table.alias
+PUBLIC HOLDINGS.TOTAL_MARKET_VALUE AS holdings.MARKET_VALUE
+
+-- ❌ DUPLICATE synonyms across dimensions
+SECURITIES: synonyms=('company_name')
+ISSUERS: synonyms=('company_name')  -- Conflict!
+
+-- ❌ RESERVED word usage
+HOLDINGS.SELECT AS SELECT_VALUE  -- SELECT is reserved
+
+## Semantic View Testing Pattern
+
+```sql
+-- Basic functionality test
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {primary_metric}
+    DIMENSIONS {primary_dimension}
+) LIMIT 5;
+
+-- Complex query test
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {metric1}, {metric2}
+    DIMENSIONS {dimension1}, {dimension2}, {dimension3}
+) LIMIT 10;
+
+-- Business scenario test (use actual business queries your agents will run)
+SELECT * FROM SEMANTIC_VIEW(
+    {semantic_view_name}
+    METRICS {relevant_metrics}
+    DIMENSIONS {relevant_dimensions}
+    FILTERS {business_filters}
+) LIMIT 20;
+```

@@ -150,8 +150,7 @@ python main.py --scope data
 ```sql
 -- Core Dimension Tables
 DIM_ISSUER                    -- Corporate hierarchies and issuer relationships
-DIM_SECURITY                  -- Immutable SecurityID with cross-reference
-DIM_SECURITY_IDENTIFIER_XREF  -- Security identifier cross-reference (TICKER, FIGI)
+DIM_SECURITY                  -- Immutable SecurityID with direct TICKER and FIGI columns
 DIM_PORTFOLIO                 -- Enhanced portfolio information
 DIM_BENCHMARK                 -- Benchmark reference data
 
@@ -337,7 +336,7 @@ Critical keywords that cause issues:
 ### Data Quality Checks
 - Portfolio weights sum to 100% (±0.1% tolerance)
 - Transaction log balances to position snapshots
-- Security identifier cross-reference integrity
+- Security identifier integrity (direct TICKER and FIGI columns)
 - Issuer hierarchy relationships valid
 - No negative prices or market values
 - Date ranges are consistent and logical
@@ -347,7 +346,7 @@ Critical keywords that cause issues:
 
 ### Demo Readiness Checklist
 - [ ] All enhanced foundation tables created successfully (DIM_SECURITY, FACT_TRANSACTION, etc.)
-- [ ] Security identifier cross-reference populated and validated
+- [ ] Security identifier integrity validated (TICKER and FIGI columns populated)
 - [ ] Transaction log balances to ABOR positions
 - [ ] Issuer hierarchies established with corporate relationships
 - [ ] Semantic view responds to test queries with issuer-level support

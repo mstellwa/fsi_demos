@@ -65,8 +65,8 @@ def build_foundation_tables(session: Session, test_mode: bool = False):
     print("🏢 Building issuer dimension...")
     build_dim_issuer(session, test_mode)
     
-    print("🔗 Building security dimension with cross-reference...")
-    build_dim_security_with_xref(session, test_mode)
+    print("🔗 Building security dimension with direct identifiers...")
+    build_dim_security(session, test_mode)
     
     print("📈 Building portfolio dimension...")
     build_dim_portfolio(session)
@@ -97,39 +97,43 @@ def build_foundation_tables(session: Session, test_mode: bool = False):
 
 
 
+def check_temp_real_assets_exists(session: Session) -> bool:
+    """Check if TEMP_REAL_ASSETS table exists in the session."""
+    try:
+        session.sql("SELECT 1 FROM TEMP_REAL_ASSETS LIMIT 1").collect()
+        return True
+    except Exception:
+        return False
+
 def build_dim_issuer(session: Session, test_mode: bool = False):
-    """Build issuer dimension with corporate hierarchies."""
+    """Build issuer dimension exclusively from real asset data."""
     
-    # Use test mode counts if specified
-    securities_count = config.TEST_SECURITIES_COUNT if test_mode else config.SECURITIES_COUNT
-    total_securities = sum(securities_count.values())
+    # Real assets required - no synthetic fallback
+    if not config.USE_REAL_ASSETS_CSV:
+        raise Exception("Real assets CSV required - set USE_REAL_ASSETS_CSV = True in config.py")
     
-    # Determine if we should use real asset data
-    use_real_assets = config.USE_REAL_ASSETS_CSV and os.path.exists(config.REAL_ASSETS_CSV_PATH)
+    if not os.path.exists(config.REAL_ASSETS_CSV_PATH):
+        raise Exception(f"Real assets CSV not found at {config.REAL_ASSETS_CSV_PATH} - run 'python main.py --extract-real-assets' first")
     
-    if use_real_assets:
-        print("✅ Using real asset data for issuer dimension")
-        build_dim_issuer_from_real_data(session)
-    else:
-        print("📝 Generating synthetic issuer data")
-        build_dim_issuer_synthetic(session, total_securities)
+    print("✅ Building issuer dimension from 100% real asset data")
+    build_dim_issuer_from_real_data(session)
 
 def build_dim_issuer_from_real_data(session: Session):
     """Build issuer dimension from real asset data using efficient Snowpark operations."""
     
-    # Load real assets from CSV
+    # Load real assets from CSV (required - no fallback)
     try:
         from extract_real_assets import load_real_assets_from_csv
         real_assets_df_pandas = load_real_assets_from_csv()
         
         if real_assets_df_pandas is None:
-            print("⚠️ Real assets CSV not found, falling back to config mapping")
-            return build_dim_issuer_from_config_mapping(session)
+            raise Exception("Real assets CSV not found - required for real-only mode")
     except Exception as e:
-        print(f"⚠️ Error loading real assets: {e}, falling back to config mapping")
-        return build_dim_issuer_from_config_mapping(session)
+        print(f"❌ Error loading real assets: {e}")
+        print("   To fix: Run 'python main.py --extract-real-assets' first")
+        raise
     
-    # Upload to temporary table for efficient processing
+    # Upload to temporary table for efficient processing (will be reused by other functions)
     real_assets_df = session.write_pandas(
         real_assets_df_pandas,
         table_name="TEMP_REAL_ASSETS",
@@ -137,6 +141,7 @@ def build_dim_issuer_from_real_data(session: Session):
         auto_create_table=True, 
         table_type="temp"
     )
+    print("✅ Created TEMP_REAL_ASSETS table for reuse by other functions")
     
     from snowflake.snowpark.functions import (
         col, lit, ifnull, row_number, abs as abs_func, hash as hash_func,
@@ -171,63 +176,10 @@ def build_dim_issuer_from_real_data(session: Session):
     issuer_count = issuers_df.count()
     print(f"✅ Created {issuer_count} issuers from real asset data using Snowpark operations")
 
-def build_dim_issuer_from_config_mapping(session: Session):
-    """Build issuer dimension from config mapping (fallback)."""
-    issuer_data = []
-    issuer_id = 1
-    
-    for ticker, company_data in config.REAL_ASSET_ISSUER_MAPPING.items():
-        issuer_data.append({
-            'IssuerID': issuer_id,
-            'UltimateParentIssuerID': None,
-            'LegalName': company_data['legal_name'],
-            'LEI': f"LEI{abs(hash(company_data['legal_name'])) % 1000000:06d}",
-            'CountryOfIncorporation': company_data['country'],
-            'GICS_Sector': company_data['sector']
-        })
-        issuer_id += 1
-    
-    issuers_df = session.create_dataframe(issuer_data)
-    issuers_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.CURATED.DIM_ISSUER")
-    
-    print(f"✅ Created {len(issuer_data)} issuers from config mapping")
 
-def build_dim_issuer_synthetic(session: Session, total_securities: int):
-    """Build synthetic issuer dimension."""
-    
-    # Generate realistic number of issuers (fewer than securities)
-    num_issuers = max(50, total_securities // 20)  # Roughly 1 issuer per 20 securities
-    
-    sectors = [
-        'Information Technology', 'Health Care', 'Financials', 'Consumer Discretionary',
-        'Communication Services', 'Industrials', 'Consumer Staples', 'Energy',
-        'Utilities', 'Real Estate', 'Materials'
-    ]
-    
-    countries = ['US', 'GB', 'DE', 'FR', 'JP', 'CA', 'AU', 'CH', 'NL', 'SE']
-    
-    issuer_data = []
-    for i in range(1, num_issuers + 1):
-        sector = random.choice(sectors)
-        country = random.choice(countries)
-        
-        issuer_data.append({
-            'IssuerID': i,
-            'UltimateParentIssuerID': None,  # Keep simple for demo
-            'LegalName': f"Issuer_{i:04d} Corp.",
-            'LEI': f"LEI{i:010d}",
-            'CountryOfIncorporation': country,
-            'GICS_Sector': sector
-        })
-    
-    # Create Snowpark DataFrame and save
-    issuers_df = session.create_dataframe(issuer_data)
-    issuers_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.CURATED.DIM_ISSUER")
-    
-    print(f"✅ Created {num_issuers} synthetic issuers")
 
-def build_dim_security_with_xref(session: Session, test_mode: bool = False):
-    """Build securities with immutable SecurityID and cross-reference."""
+def build_dim_security(session: Session, test_mode: bool = False):
+    """Build securities with immutable SecurityID and direct TICKER/FIGI columns."""
     
     # Use test mode counts if specified
     securities_count = config.TEST_SECURITIES_COUNT if test_mode else config.SECURITIES_COUNT
@@ -245,17 +197,24 @@ def build_dim_security_with_xref(session: Session, test_mode: bool = False):
 def build_dim_security_from_real_data(session: Session, securities_count: dict):
     """Build securities using real asset data only - no synthetic fallback."""
     
-    # Load real assets from CSV
-    try:
-        from extract_real_assets import load_real_assets_from_csv
-        real_assets_df = load_real_assets_from_csv()
-        
-        if real_assets_df is None:
-            raise Exception("Real assets CSV not found - required for real-only mode")
-    except Exception as e:
-        print(f"❌ Error loading real assets: {e}")
-        print("   To fix: Run 'python main.py --extract-real-assets' first")
-        raise
+    # Check if TEMP_REAL_ASSETS table already exists (created by build_dim_issuer)
+    if check_temp_real_assets_exists(session):
+        print("✅ Reusing existing TEMP_REAL_ASSETS table (optimization)")
+        # Load real assets from existing temp table
+        real_assets_df = session.table("TEMP_REAL_ASSETS").to_pandas()
+    else:
+        print("📥 Loading real assets from CSV (TEMP_REAL_ASSETS not found)")
+        # Load real assets from CSV
+        try:
+            from extract_real_assets import load_real_assets_from_csv
+            real_assets_df = load_real_assets_from_csv()
+            
+            if real_assets_df is None:
+                raise Exception("Real assets CSV not found - required for real-only mode")
+        except Exception as e:
+            print(f"❌ Error loading real assets: {e}")
+            print("   To fix: Run 'python main.py --extract-real-assets' first")
+            raise
     
     # Get existing issuers for mapping (optimized single query)
     issuers = session.sql(f"SELECT IssuerID, LegalName FROM {config.DATABASE_NAME}.CURATED.DIM_ISSUER").collect()
@@ -263,7 +222,6 @@ def build_dim_security_from_real_data(session: Session, securities_count: dict):
     
     # Process each asset category efficiently
     all_security_data = []
-    all_xref_data = []
     security_id = 1
     
     for asset_category, max_count in [('Equity', securities_count['equities']), 
@@ -312,56 +270,30 @@ def build_dim_security_from_real_data(session: Session, securities_count: dict):
                 country = 'US'
             
             all_security_data.append({
-            'SecurityID': security_id,
-            'IssuerID': issuer_id,
-                'PrimaryTicker': asset['PRIMARY_TICKER'],
+                'SecurityID': security_id,
+                'IssuerID': issuer_id,
+                'Ticker': asset['PRIMARY_TICKER'],  # Direct ticker column
+                'FIGI': asset.get('TOP_LEVEL_OPENFIGI_ID', f"BBG{abs(hash(asset['PRIMARY_TICKER'])) % 1000000:06d}"),  # Direct FIGI column
                 'Description': str(asset.get('SECURITY_NAME', asset['PRIMARY_TICKER']))[:255],
                 'AssetClass': asset_category,
                 'SecurityType': security_type_map.get(asset_category, 'Other'),
                 'CountryOfRisk': country,
-            'IssueDate': datetime(2010, 1, 1).date(),
+                'IssueDate': datetime(2010, 1, 1).date(),
                 'MaturityDate': datetime(2030, 1, 1).date() if asset_category == 'Corporate Bond' else None,
                 'CouponRate': 5.0 if asset_category == 'Corporate Bond' else None,
-            'RecordStartDate': datetime.now(),
-            'RecordEndDate': None,
-            'IsActive': True
-        })
-        
-        # Create cross-reference entries
-            ticker = asset['PRIMARY_TICKER']
-            base_xref_id = len(all_xref_data) + 1
-            all_xref_data.extend([
-            {
-                    'SecurityIdentifierID': base_xref_id,
-                'SecurityID': security_id,
-                'IdentifierType': 'TICKER',
-                'IdentifierValue': ticker,
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            },
-            {
-                    'SecurityIdentifierID': base_xref_id + 1,
-                'SecurityID': security_id,
-                    'IdentifierType': 'FIGI',
-                    'IdentifierValue': asset.get('TOP_LEVEL_OPENFIGI_ID', f"BBG{abs(hash(ticker)) % 1000000:06d}"),
-                'EffectiveStartDate': datetime(2010, 1, 1).date(),
-                'EffectiveEndDate': datetime(2099, 12, 31).date(),
-                'IsPrimaryForType': True
-            }
-        ])
-        
-        security_id += 1
+                'RecordStartDate': datetime.now(),
+                'RecordEndDate': None,
+                'IsActive': True
+            })
+            
+            security_id += 1
     
     # Save to database using Snowpark DataFrames
     if all_security_data:
         securities_df = session.create_dataframe(all_security_data)
         securities_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.CURATED.DIM_SECURITY")
         
-        xref_df = session.create_dataframe(all_xref_data)
-        xref_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF")
-        
-        print(f"✅ Created {len(all_security_data)} securities from real asset data (100% authentic)")
+        print(f"✅ Created {len(all_security_data)} securities from real asset data (100% authentic) with direct TICKER and FIGI columns")
         
         # Report actual counts achieved
         actual_counts = {}
@@ -423,57 +355,79 @@ def build_fact_transaction(session: Session, test_mode: bool = False):
     # This is a simplified version - in a real implementation, we'd generate
     # realistic transaction patterns that result in the desired end positions
     session.sql(f"""
+        -- Generate synthetic transaction history that builds to realistic portfolio positions
+        -- This creates a complete audit trail of BUY transactions over the past 12 months
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_TRANSACTION AS
         WITH major_us_securities AS (
-            -- Prioritize major US stocks that have research coverage
+            -- Step 1: Prioritize major US stocks for demo coherence and research coverage alignment
+            -- Creates a priority ranking system to ensure portfolios hold recognizable securities
             SELECT 
                 s.SecurityID,
-                xref.IdentifierValue as TICKER,
+                s.Ticker,
                 CASE 
-                    WHEN xref.IdentifierValue IN ('AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NFLX', 'CRM', 'ORCL') THEN 1
-                    WHEN xref.IdentifierValue RLIKE '^[A-Z]{{1,5}}$' AND LENGTH(xref.IdentifierValue) <= 5 THEN 2  -- Real US tickers
-                    ELSE 3  -- Other securities
+                    -- Priority 1: Major stocks with guaranteed research coverage (demo scenario alignment)
+                    WHEN s.Ticker IN ('AAPL', 'CMC', 'RBBN', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NFLX', 'CRM', 'ORCL') THEN 1
+                    -- Priority 2: Clean US ticker symbols (1-5 characters, letters only)
+                    WHEN s.Ticker RLIKE '^[A-Z]{{1,5}}$' AND LENGTH(s.Ticker) <= 5 THEN 2
+                    -- Priority 3: All other securities (bonds, international, complex tickers)
+                    ELSE 3
                 END as priority
             FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
-            JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON s.SecurityID = xref.SecurityID
-            WHERE s.AssetClass = 'Equity' 
-            AND xref.IdentifierType = 'TICKER' 
-            AND xref.IsPrimaryForType = TRUE
+            WHERE s.AssetClass = 'Equity'  -- Focus on equities for transaction generation
         ),
         portfolio_securities AS (
+            -- Step 2: Assign securities to portfolios based on priority ranking
+            -- Each portfolio gets a cross-product with all securities, then ranked by priority
             SELECT 
                 p.PortfolioID,
                 s.SecurityID,
                 s.priority,
+                -- Random ordering within priority groups for portfolio diversification
                 ROW_NUMBER() OVER (PARTITION BY p.PortfolioID ORDER BY s.priority, RANDOM()) as rn
             FROM {config.DATABASE_NAME}.CURATED.DIM_PORTFOLIO p
             CROSS JOIN major_us_securities s
         ),
         selected_holdings AS (
+            -- Step 3: Limit each portfolio to ~45 securities for realistic concentration
+            -- This creates the universe of securities each portfolio will hold
             SELECT PortfolioID, SecurityID
             FROM portfolio_securities
-            WHERE rn <= 45  -- Each portfolio holds ~45 securities, prioritizing major US stocks
+            WHERE rn <= 45  -- Typical large-cap equity portfolio size
         ),
         transaction_dates AS (
+            -- Step 4: Generate weekly transaction dates over the past 12 months
+            -- Creates realistic trading frequency (weekly purchases building positions)
             SELECT 
                 DATEADD(day, seq4() * 7, DATEADD(month, -{config.SYNTHETIC_TRANSACTION_MONTHS}, CURRENT_DATE())) as trade_date
-            FROM TABLE(GENERATOR(rowcount => {config.SYNTHETIC_TRANSACTION_MONTHS * 4}))  -- Weekly transactions
-            WHERE DAYOFWEEK(trade_date) BETWEEN 2 AND 6  -- Business days only
+            FROM TABLE(GENERATOR(rowcount => {config.SYNTHETIC_TRANSACTION_MONTHS * 4}))  -- ~48 weeks of transactions
+            WHERE DAYOFWEEK(trade_date) BETWEEN 2 AND 6  -- Business days only (Monday=2 to Friday=6)
         )
+        -- Step 5: Generate final transaction records with realistic attributes
+        -- Creates BUY transactions that build up portfolio positions over time
         SELECT 
+            -- Unique transaction identifier (sequential numbering)
             ROW_NUMBER() OVER (ORDER BY sh.PortfolioID, sh.SecurityID, td.trade_date) as TransactionID,
+            -- Transaction and trade dates (same for simplicity)
             td.trade_date as TransactionDate,
+            td.trade_date as TradeDate,
+            -- Portfolio and security references
             sh.PortfolioID,
             sh.SecurityID,
-            'BUY' as TransactionType,  -- Simplified: mostly buys to build positions
-            td.trade_date as TradeDate,
-            DATEADD(day, 2, td.trade_date) as SettleDate,  -- T+2 settlement
+            -- Transaction attributes
+            'BUY' as TransactionType,  -- Simplified: mostly buys to build positions over time
+            DATEADD(day, 2, td.trade_date) as SettleDate,  -- Standard T+2 settlement cycle
+            -- Realistic transaction amounts (100-10,000 shares)
             UNIFORM(100, 10000, RANDOM()) as Quantity,
+            -- Realistic stock prices ($50-$500 range)
             UNIFORM(50, 500, RANDOM()) as Price,
+            -- Gross amount calculated elsewhere (NULL for now)
             NULL as GrossAmount_Local,
+            -- Realistic commission costs ($5-$50)
             UNIFORM(5, 50, RANDOM()) as Commission_Local,
+            -- Standard currency and system identifiers
             'USD' as Currency,
-            'ABOR' as SourceSystem,
+            'ABOR' as SourceSystem,  -- Accounting Book of Record
+            -- Source system transaction reference
             CONCAT('TXN_', ROW_NUMBER() OVER (ORDER BY sh.PortfolioID, sh.SecurityID, td.trade_date)) as SourceTransactionID
         FROM selected_holdings sh
         CROSS JOIN transaction_dates td
@@ -488,46 +442,63 @@ def build_fact_position_daily_abor(session: Session):
     print("📋 Building ABOR positions from transactions...")
     
     session.sql(f"""
+        -- Build ABOR (Accounting Book of Record) positions from transaction history
+        -- This creates monthly position snapshots by aggregating transaction data
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_POSITION_DAILY_ABOR AS
         WITH monthly_dates AS (
+            -- Step 1: Generate month-end dates for position snapshots over 5 years of history
+            -- Uses LAST_DAY to ensure consistent month-end reporting dates
             SELECT LAST_DAY(DATEADD(month, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE()))) as position_date
-            FROM TABLE(GENERATOR(rowcount => {12 * config.YEARS_OF_HISTORY}))
+            FROM TABLE(GENERATOR(rowcount => {12 * config.YEARS_OF_HISTORY}))  -- 60 month-end dates
         ),
         transaction_balances AS (
+            -- Step 2: Calculate net position quantities and average cost basis from transactions
+            -- Aggregates all BUY/SELL transactions to determine current holdings
             SELECT 
                 PortfolioID,
                 SecurityID,
+                -- Net quantity: BUY transactions add, SELL transactions subtract
                 SUM(CASE WHEN TransactionType = 'BUY' THEN Quantity ELSE -Quantity END) as TotalQuantity,
+                -- Average transaction price for cost basis calculation
                 AVG(Price) as AvgPrice
             FROM {config.DATABASE_NAME}.CURATED.FACT_TRANSACTION
             GROUP BY PortfolioID, SecurityID
-            HAVING TotalQuantity > 0  -- Only positive positions
+            HAVING TotalQuantity > 0  -- Only include positions with positive holdings
         ),
         position_snapshots AS (
+            -- Step 3: Create position snapshots for each month-end date
+            -- Cross-joins transaction balances with monthly dates to create time series
             SELECT 
                 md.position_date as HoldingDate,
                 tb.PortfolioID,
                 tb.SecurityID,
                 tb.TotalQuantity as Quantity,
+                -- Market value calculations (using average transaction price as proxy)
                 tb.TotalQuantity * tb.AvgPrice as MarketValue_Local,
-                tb.TotalQuantity * tb.AvgPrice as MarketValue_Base,  -- Assume USD
-                tb.TotalQuantity * tb.AvgPrice * 0.95 as CostBasis_Local,  -- Simplified
+                tb.TotalQuantity * tb.AvgPrice as MarketValue_Base,  -- Assume all USD for simplicity
+                -- Cost basis calculations (slightly below market value for realistic P&L)
+                tb.TotalQuantity * tb.AvgPrice * 0.95 as CostBasis_Local,  -- 5% unrealized gain
                 tb.TotalQuantity * tb.AvgPrice * 0.95 as CostBasis_Base,
                 0 as AccruedInterest_Local  -- Simplified
             FROM monthly_dates md
             CROSS JOIN transaction_balances tb
         ),
         portfolio_totals AS (
+            -- Step 4: Calculate total portfolio values for weight calculations
+            -- Sums all position values by portfolio and date for percentage calculations
             SELECT 
                 HoldingDate,
                 PortfolioID,
-                SUM(MarketValue_Base) as PortfolioTotal
+                SUM(MarketValue_Base) as PortfolioTotal  -- Total AUM per portfolio per date
             FROM position_snapshots
             GROUP BY HoldingDate, PortfolioID
         )
+        -- Step 5: Final position records with calculated portfolio weights
+        -- Joins position data with portfolio totals to calculate percentage allocations
         SELECT 
-            ps.*,
-            ps.MarketValue_Base / pt.PortfolioTotal as PortfolioWeight
+            ps.*,  -- All position snapshot columns
+            -- Calculate portfolio weight as percentage of total portfolio value
+            ps.MarketValue_Base / pt.PortfolioTotal as PortfolioWeight  -- Decimal weight (0.05 = 5%)
         FROM position_snapshots ps
         JOIN portfolio_totals pt ON ps.HoldingDate = pt.HoldingDate AND ps.PortfolioID = pt.PortfolioID
     """).collect()
@@ -539,58 +510,72 @@ def build_fact_marketdata_timeseries(session: Session, test_mode: bool = False):
     
     print("📝 Generating synthetic market data for all securities")
     build_marketdata_synthetic(session)
+
 def build_marketdata_synthetic(session: Session):
     """Build synthetic market data."""
     
     session.sql(f"""
+        -- Generate synthetic market data (OHLCV) for all securities over 5 years
+        -- Creates realistic price movements and trading volumes for demo purposes
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_MARKETDATA_TIMESERIES AS
         WITH business_dates AS (
+            -- Step 1: Generate business days (Monday-Friday) over 5 years of history
+            -- Excludes weekends to match real market trading calendar
             SELECT DATEADD(day, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE())) as price_date
-            FROM TABLE(GENERATOR(rowcount => {365 * config.YEARS_OF_HISTORY}))
-            WHERE DAYOFWEEK(price_date) BETWEEN 2 AND 6  -- Monday to Friday
+            FROM TABLE(GENERATOR(rowcount => {365 * config.YEARS_OF_HISTORY}))  -- ~1,825 days total
+            WHERE DAYOFWEEK(price_date) BETWEEN 2 AND 6  -- Monday=2 to Friday=6 only
         ),
         securities_dates AS (
+            -- Step 2: Create cartesian product of all securities with all business dates
+            -- This ensures every security has price data for every trading day
             SELECT 
                 s.SecurityID,
-                s.AssetClass,
+                s.AssetClass,  -- Used for asset-class-specific price ranges
                 bd.price_date as PriceDate
             FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
             CROSS JOIN business_dates bd
         )
+        -- Step 3: Generate realistic OHLCV data with asset-class-appropriate price ranges
         SELECT 
             PriceDate,
             SecurityID,
+            -- Opening prices with asset-class-specific ranges and daily volatility
+            CASE 
+                WHEN AssetClass = 'Equity' THEN UNIFORM(50, 850, RANDOM())        -- Equity: $50-$850
+                WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(90, 110, RANDOM()) -- Bonds: $90-$110 (near par)
+                ELSE UNIFORM(50, 450, RANDOM())                                   -- ETFs/Other: $50-$450
+            END * (1 + (UNIFORM(-0.02, 0.02, RANDOM()))) as Price_Open,  -- ±2% daily variation
+            
+            -- High prices (always above base price)
             CASE 
                 WHEN AssetClass = 'Equity' THEN UNIFORM(50, 850, RANDOM())
                 WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(90, 110, RANDOM())
                 ELSE UNIFORM(50, 450, RANDOM())
-            END * (1 + (UNIFORM(-0.02, 0.02, RANDOM()))) as Price_Open,
+            END * (1 + UNIFORM(0, 0.03, RANDOM())) as Price_High,  -- 0-3% above base
             
+            -- Low prices (always below base price)
             CASE 
                 WHEN AssetClass = 'Equity' THEN UNIFORM(50, 850, RANDOM())
                 WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(90, 110, RANDOM())
                 ELSE UNIFORM(50, 450, RANDOM())
-            END * (1 + UNIFORM(0, 0.03, RANDOM())) as Price_High,
+            END * (1 - UNIFORM(0, 0.03, RANDOM())) as Price_Low,   -- 0-3% below base
             
-            CASE 
-                WHEN AssetClass = 'Equity' THEN UNIFORM(50, 850, RANDOM())
-                WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(90, 110, RANDOM())
-                ELSE UNIFORM(50, 450, RANDOM())
-            END * (1 - UNIFORM(0, 0.03, RANDOM())) as Price_Low,
-            
+            -- Closing prices (base price without additional variation)
             CASE 
                 WHEN AssetClass = 'Equity' THEN UNIFORM(50, 850, RANDOM())
                 WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(90, 110, RANDOM())
                 ELSE UNIFORM(50, 450, RANDOM())
             END as Price_Close,
             
+            -- Trading volumes with asset-class-appropriate ranges
             CASE 
-                WHEN AssetClass = 'Equity' THEN UNIFORM(100000, 10000000, RANDOM())::int
-                WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(10000, 1000000, RANDOM())::int
-                ELSE UNIFORM(50000, 5000000, RANDOM())::int
+                WHEN AssetClass = 'Equity' THEN UNIFORM(100000, 10000000, RANDOM())::int      -- High equity volumes
+                WHEN AssetClass = 'Corporate Bond' THEN UNIFORM(10000, 1000000, RANDOM())::int -- Lower bond volumes
+                ELSE UNIFORM(50000, 5000000, RANDOM())::int                                   -- Moderate ETF volumes
             END as Volume,
             
-            1.0 as TotalReturnFactor_Daily  -- Simplified for now
+            -- Total return factor (simplified to 1.0 for now - could include dividends/interest)
+            1.0 as TotalReturnFactor_Daily
         FROM securities_dates
     """).collect()
     
@@ -602,18 +587,17 @@ def build_fundamentals_and_estimates(session: Session):
     
     # Build fundamentals table with realistic financial data
     session.sql(f"""
+        -- Generate synthetic fundamental data (revenue, earnings, ratios) for equity securities
+        -- Creates quarterly financial metrics with sector-appropriate ranges for 5 years
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_FUNDAMENTALS AS
         WITH equity_securities AS (
             SELECT 
                 s.SecurityID as SECURITY_ID,
-                xref.IdentifierValue as TICKER,
+                s.Ticker,
                 i.GICS_Sector
             FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
             JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER i ON s.IssuerID = i.IssuerID
-            JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON s.SecurityID = xref.SecurityID
             WHERE s.AssetClass = 'Equity'
-            AND xref.IdentifierType = 'TICKER' 
-            AND xref.IsPrimaryForType = TRUE
         ),
         quarters AS (
             SELECT 
@@ -654,6 +638,8 @@ def build_fundamentals_and_estimates(session: Session):
     
     # Build estimates table with guidance
     session.sql(f"""
+        -- Generate synthetic analyst estimates and guidance based on fundamental data
+        -- Creates forward-looking revenue and earnings estimates with realistic consensus ranges
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_ESTIMATES AS
         WITH estimate_base AS (
             SELECT 
@@ -685,19 +671,18 @@ def build_esg_scores(session: Session):
     """Build ESG scores with SecurityID linkage using efficient SQL generation."""
     
     session.sql(f"""
+        -- Generate synthetic ESG scores with sector-specific characteristics and regional variations
+        -- Creates Environmental, Social, Governance scores (0-100) with realistic distributions
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_ESG_SCORES AS
         WITH equity_securities AS (
             SELECT 
                 s.SecurityID,
-                xref.IdentifierValue as TICKER,
+                s.Ticker,
                 i.GICS_Sector,
                 i.CountryOfIncorporation
             FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
             JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER i ON s.IssuerID = i.IssuerID
-            JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON s.SecurityID = xref.SecurityID
             WHERE s.AssetClass = 'Equity'
-            AND xref.IdentifierType = 'TICKER' 
-            AND xref.IsPrimaryForType = TRUE
         ),
         scoring_dates AS (
             SELECT DATEADD(quarter, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE())) as SCORE_DATE
@@ -764,19 +749,18 @@ def build_factor_exposures(session: Session):
     """Build factor exposures with SecurityID linkage using efficient SQL generation."""
     
     session.sql(f"""
+        -- Generate synthetic factor exposures (Value, Growth, Quality, etc.) for equity securities
+        -- Creates factor loadings with sector-specific characteristics and realistic correlations
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_FACTOR_EXPOSURES AS
         WITH equity_securities AS (
             SELECT 
                 s.SecurityID,
-                xref.IdentifierValue as TICKER,
+                s.Ticker,
                 i.GICS_Sector,
                 i.CountryOfIncorporation
             FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
             JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER i ON s.IssuerID = i.IssuerID
-            JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON s.SecurityID = xref.SecurityID
             WHERE s.AssetClass = 'Equity'
-            AND xref.IdentifierType = 'TICKER' 
-            AND xref.IsPrimaryForType = TRUE
         ),
         monthly_dates AS (
             SELECT DATEADD(month, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE())) as EXPOSURE_DATE
@@ -837,19 +821,18 @@ def build_benchmark_holdings(session: Session):
     """Build benchmark holdings with SecurityID linkage using efficient SQL generation."""
     
     session.sql(f"""
+        -- Generate synthetic benchmark holdings for major indices (S&P 500, MSCI ACWI, Nasdaq 100)
+        -- Creates realistic index compositions with market-cap weighted allocations
         CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_BENCHMARK_HOLDINGS AS
         WITH equity_securities AS (
             SELECT 
                 s.SecurityID,
-                xref.IdentifierValue as TICKER,
+                s.Ticker,
                 i.GICS_Sector,
                 i.CountryOfIncorporation
             FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
             JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER i ON s.IssuerID = i.IssuerID
-            JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON s.SecurityID = xref.SecurityID
             WHERE s.AssetClass = 'Equity'
-            AND xref.IdentifierType = 'TICKER' 
-            AND xref.IsPrimaryForType = TRUE
         ),
         benchmarks AS (
             SELECT BenchmarkID, BenchmarkName FROM {config.DATABASE_NAME}.CURATED.DIM_BENCHMARK
@@ -937,37 +920,27 @@ def validate_data_quality(session: Session):
     else:
         print("✅ Portfolio weights sum to 100%")
     
-    # Check security identifier integrity
-    xref_check = session.sql(f"""
+    # Check security identifier integrity (simplified - check direct columns)
+    security_check = session.sql(f"""
         SELECT 
-            SecurityID,
-            COUNT(*) as IdentifierCount,
-            COUNT(DISTINCT IdentifierType) as UniqueTypes
-        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF
-        WHERE CURRENT_DATE BETWEEN EffectiveStartDate AND EffectiveEndDate
-        GROUP BY SecurityID
-        HAVING COUNT(DISTINCT IdentifierType) < 1
+            COUNT(*) as total_securities,
+            COUNT(CASE WHEN Ticker IS NOT NULL AND LENGTH(Ticker) > 0 THEN 1 END) as securities_with_ticker,
+            COUNT(CASE WHEN FIGI IS NOT NULL AND LENGTH(FIGI) > 0 THEN 1 END) as securities_with_figi
+        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY
     """).collect()
     
-    if xref_check:
-        print(f"⚠️  Securities with no identifiers: {len(xref_check)}")
-    else:
-        print("✅ Security identifier cross-reference integrity validated")
-    
-    # Additional check: Report identifier distribution
-    identifier_summary = session.sql(f"""
-        SELECT 
-            COUNT(DISTINCT IdentifierType) as IdentifierTypes,
-            COUNT(DISTINCT SecurityID) as SecurityCount
-        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF
-        WHERE CURRENT_DATE BETWEEN EffectiveStartDate AND EffectiveEndDate
-        GROUP BY SecurityID
-        ORDER BY IdentifierTypes
-    """).collect()
-    
-    if identifier_summary:
-        one_id_count = sum(1 for row in identifier_summary if row['IDENTIFIERTYPES'] == 1)
-        two_id_count = sum(1 for row in identifier_summary if row['IDENTIFIERTYPES'] == 2)
-        print(f"📊 Identifier distribution: {one_id_count} securities with 1 identifier (TICKER), {two_id_count} securities with 2 identifiers (TICKER+FIGI)")
+    if security_check:
+        result = security_check[0]
+        total = result['TOTAL_SECURITIES']
+        with_ticker = result['SECURITIES_WITH_TICKER']
+        with_figi = result['SECURITIES_WITH_FIGI']
+        
+        print(f"✅ Security identifier validation: {total} securities total")
+        print(f"📊 Identifier coverage: {with_ticker} with TICKER ({with_ticker/total*100:.1f}%), {with_figi} with FIGI ({with_figi/total*100:.1f}%)")
+        
+        if with_ticker < total:
+            print(f"⚠️  {total - with_ticker} securities missing TICKER")
+        if with_figi < total:
+            print(f"⚠️  {total - with_figi} securities missing FIGI")
     
     print("✅ Data quality validation complete")

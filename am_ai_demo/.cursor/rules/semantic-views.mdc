@@ -101,7 +101,7 @@ Follow these exact patterns for ALL sections:
 
 **DIMENSIONS Section:**
 ```sql
-<table_alias>.<dimension_name> AS <column_name> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
+<table_alias>.<semantic_dimension_name> AS <database_column_name> WITH SYNONYMS=('synonym1','synonym2') COMMENT='Description'
 ```
 
 **METRICS Section:**
@@ -118,10 +118,10 @@ HOLDINGS AS SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR
 HOLDINGS_TO_PORTFOLIOS AS HOLDINGS(PORTFOLIOID) REFERENCES PORTFOLIOS(PORTFOLIOID)
 
 -- ✅ CORRECT dimension (NO PUBLIC keyword)
-PORTFOLIOS.PORTFOLIO_NAME AS PORTFOLIONAME WITH SYNONYMS=('fund_name','strategy_name')
+PORTFOLIOS.PORTFOLIONAME AS PortfolioName WITH SYNONYMS=('fund_name','strategy_name')
 
 -- ✅ CORRECT metric (NO PUBLIC keyword)  
-HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('exposure','aum')
+HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MarketValue_Base) WITH SYNONYMS=('exposure','aum')
 
 -- ❌ WRONG table order
 SAM_DEMO.CURATED.FACT_POSITION_DAILY_ABOR AS HOLDINGS
@@ -176,36 +176,36 @@ CREATE OR REPLACE SEMANTIC VIEW SAM_DEMO.AI.SAM_ANALYST_VIEW
 	)
 	DIMENSIONS (
 		-- Portfolio dimensions
-		PORTFOLIOS.PORTFOLIO_NAME AS PORTFOLIONAME WITH SYNONYMS=('fund_name','strategy_name','portfolio_name') COMMENT='Portfolio or fund name',
-		PORTFOLIOS.STRATEGY AS STRATEGY WITH SYNONYMS=('investment_strategy','portfolio_strategy') COMMENT='Investment strategy type',
+		PORTFOLIOS.PORTFOLIONAME AS PortfolioName WITH SYNONYMS=('fund_name','strategy_name','portfolio_name') COMMENT='Portfolio or fund name',
+		PORTFOLIOS.STRATEGY AS Strategy WITH SYNONYMS=('investment_strategy','portfolio_strategy') COMMENT='Investment strategy type',
 		
 		-- Security dimensions  
-		SECURITIES.COMPANY_NAME AS DESCRIPTION WITH SYNONYMS=('company','security_name','description') COMMENT='Security description or company name',
-		SECURITIES.TICKER AS PRIMARYTICKER WITH SYNONYMS=('ticker_symbol','symbol','primary_ticker') COMMENT='Primary trading symbol',
-		SECURITIES.ASSET_CLASS AS ASSETCLASS WITH SYNONYMS=('instrument_type','security_type','asset_class') COMMENT='Asset class: Equity, Corporate Bond, ETF',
+		SECURITIES.DESCRIPTION AS Description WITH SYNONYMS=('company','security_name','description') COMMENT='Security description or company name',
+		SECURITIES.PRIMARYTICKER AS Ticker WITH SYNONYMS=('ticker_symbol','symbol','primary_ticker') COMMENT='Primary trading symbol',
+		SECURITIES.ASSETCLASS AS AssetClass WITH SYNONYMS=('instrument_type','security_type','asset_class') COMMENT='Asset class: Equity, Corporate Bond, ETF',
 		
 		-- Issuer dimensions (for enhanced analysis)
-		ISSUERS.ISSUER_NAME AS LEGALNAME WITH SYNONYMS=('issuer_name','legal_name','company_name') COMMENT='Legal issuer name',
-		ISSUERS.SECTOR AS GICS_SECTOR WITH SYNONYMS=('sector','industry_sector','gics_sector') COMMENT='GICS Level 1 sector classification',
-		ISSUERS.COUNTRY AS COUNTRYOFINCORPORATION WITH SYNONYMS=('domicile','country_of_risk','country') COMMENT='Country of incorporation',
+		ISSUERS.LEGALNAME AS LegalName WITH SYNONYMS=('issuer_name','legal_name','company_name') COMMENT='Legal issuer name',
+		ISSUERS.GICS_SECTOR AS GICS_Sector WITH SYNONYMS=('sector','industry_sector','gics_sector') COMMENT='GICS Level 1 sector classification',
+		ISSUERS.COUNTRYOFINCORPORATION AS CountryOfIncorporation WITH SYNONYMS=('domicile','country_of_risk','country') COMMENT='Country of incorporation',
 		
 		-- Time dimensions
-		HOLDINGS.HOLDING_DATE AS HOLDINGDATE WITH SYNONYMS=('position_date','as_of_date','date') COMMENT='Holdings as-of date'
+		HOLDINGS.HOLDINGDATE AS HoldingDate WITH SYNONYMS=('position_date','as_of_date','date') COMMENT='Holdings as-of date'
 	)
 	METRICS (
 		-- Core position metrics
-		HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('exposure','total_exposure','aum','market_value','position_value') COMMENT='Total market value in base currency',
-		HOLDINGS.HOLDING_COUNT AS COUNT(SECURITYID) WITH SYNONYMS=('position_count','number_of_holdings','holding_count','count') COMMENT='Count of portfolio positions',
+		HOLDINGS.TOTAL_MARKET_VALUE AS SUM(MarketValue_Base) WITH SYNONYMS=('exposure','total_exposure','aum','market_value','position_value') COMMENT='Total market value in base currency',
+		HOLDINGS.HOLDING_COUNT AS COUNT(SecurityID) WITH SYNONYMS=('position_count','number_of_holdings','holding_count','count') COMMENT='Count of portfolio positions',
 		
 		-- Portfolio weight metrics  
-		HOLDINGS.PORTFOLIO_WEIGHT AS SUM(PORTFOLIOWEIGHT) WITH SYNONYMS=('weight','allocation','portfolio_weight') COMMENT='Portfolio weight as decimal',
-		HOLDINGS.PORTFOLIO_WEIGHT_PCT AS SUM(PORTFOLIOWEIGHT) * 100 WITH SYNONYMS=('weight_percent','allocation_percent','percentage_weight') COMMENT='Portfolio weight as percentage',
+		HOLDINGS.PORTFOLIO_WEIGHT AS SUM(PortfolioWeight) WITH SYNONYMS=('weight','allocation','portfolio_weight') COMMENT='Portfolio weight as decimal',
+		HOLDINGS.PORTFOLIO_WEIGHT_PCT AS SUM(PortfolioWeight) * 100 WITH SYNONYMS=('weight_percent','allocation_percent','percentage_weight') COMMENT='Portfolio weight as percentage',
 		
 		-- Issuer-level metrics (enhanced capability)
-		HOLDINGS.ISSUER_EXPOSURE AS SUM(MARKETVALUE_BASE) WITH SYNONYMS=('issuer_total','issuer_value','issuer_exposure') COMMENT='Total exposure to issuer across all securities',
+		HOLDINGS.ISSUER_EXPOSURE AS SUM(MarketValue_Base) WITH SYNONYMS=('issuer_total','issuer_value','issuer_exposure') COMMENT='Total exposure to issuer across all securities',
 		
 		-- Concentration metrics
-		HOLDINGS.MAX_POSITION_WEIGHT AS MAX(PORTFOLIOWEIGHT) WITH SYNONYMS=('largest_position','max_weight','concentration') COMMENT='Largest single position weight'
+		HOLDINGS.MAX_POSITION_WEIGHT AS MAX(PortfolioWeight) WITH SYNONYMS=('largest_position','max_weight','concentration') COMMENT='Largest single position weight'
 	)
 	COMMENT='Multi-asset semantic view for portfolio analytics with issuer hierarchy support';
 ```

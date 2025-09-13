@@ -30,7 +30,7 @@ Complete demo scenario for Portfolio Copilot with step-by-step conversations, ex
 #### Step 1: Top Holdings Overview
 **User Prompt**: 
 ```
-"What are my top 10 holdings by market value in the SAM Global Thematic Growth portfolio?"
+"What are my top 10 holdings by market value in the SAM Technology & Infrastructure portfolio?"
 ```
 
 **Expected Response**:
@@ -62,7 +62,7 @@ Complete demo scenario for Portfolio Copilot with step-by-step conversations, ex
 #### Step 3: Benchmark Comparison
 **User Prompt**: 
 ```
-"Show me the sector allocation for the SAM Global Thematic Growth portfolio and compare it to technology sector averages."
+"Show me the sector allocation for the SAM Technology & Infrastructure portfolio and compare it to technology sector averages."
 ```
 
 **Expected Response**:
@@ -107,7 +107,7 @@ Complete demo scenario for Portfolio Copilot with step-by-step conversations, ex
 5. **End with Value**: Step 4 shows proactive risk monitoring
 
 ### Current Data Highlights
-- **Realistic Portfolios**: SAM Global Thematic Growth ($90B), SAM ESG Leaders ($108B), SAM Flagship ($150B)
+- **Realistic Portfolios**: SAM Technology & Infrastructure ($90B), SAM ESG Leaders ($108B), SAM Flagship ($150B)
 - **Real Tickers**: AAPL, MSFT, NVDA, GOOGL, etc. with proper sector classifications
 - **Generated Research**: 1,200 broker reports, 800 earnings transcripts, 800 press releases
 - **UK English**: All content generated in professional UK English

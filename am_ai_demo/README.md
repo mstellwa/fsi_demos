@@ -9,7 +9,7 @@ A comprehensive demonstration of Snowflake Intelligence capabilities for asset m
 2. **Python Environment**: Python 3.10+ with snowflake-snowpark-python
 3. **Connection Configuration**: `~/.snowflake/connections.toml` properly configured
 4. **Snowflake Intelligence Enabled**: https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-intelligence#set-up-sf-intelligence
-5. **Required**: Access to "Data Financials & Economics: Enterprise" dataset from Snowflake Marketplace for 100% real asset implementation.
+5. **Required**: Access to "Data Financials & Economics: Enterprise" dataset from Snowflake Marketplace for 100% real asset implementation or.
 
 ### Install Dependencies
 ```bash
@@ -20,13 +20,11 @@ pip install snowflake-snowpark-python
 Ensure your `~/.snowflake/connections.toml` contains a valid connection profile:
 
 ```toml
-[connections.sfseeurope-mstellwall-aws-us-west3]
+[my_demo_connection]
 account = "your-account"
 user = "your-username" 
 password = "your-password"
 warehouse = "your-warehouse"
-database = "SAM_DEMO"
-schema = "CURATED"
 ```
 
 ### Build Demo Environment (100% Real Assets)
