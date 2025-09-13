@@ -2,17 +2,18 @@
 alwaysApply: true
 ---
 
-# SAM Demo - Enhanced Data Generation Guide
+# SAM Demo - 100% Real Asset Data Model Guide
 
-Complete guide for generating industry-standard asset management data using the enhanced SecurityID-based model with transaction audit trails and issuer hierarchies.
+Complete guide for the industry-standard data model using 100% authentic securities from Snowflake Marketplace OpenFIGI dataset. **No synthetic securities generated.**
 
 ## Overview
 
-This guide covers the enhanced data model that follows industry best practices with immutable SecurityID, transaction-based holdings, and corporate hierarchy support while maintaining real asset/market data integration.
+This guide covers the enhanced data model with 14,000+ real securities, immutable SecurityID, transaction-based holdings, and corporate hierarchy support using synthetic market data for consistent performance.
 
 **Key Principles:**
+- **100% Real Assets**: All 14,000+ securities from authentic OpenFIGI dataset
 - **Industry-Standard Architecture**: Professional asset management data model following best practices
-- **Real Asset Integration**: Authentic market data with synthetic fallback (see @real-assets.mdc)
+- **Authentic Identifiers**: TICKER + real Bloomberg FIGI identifiers only
 - **Performance-Optimized**: SQL-first approach with efficient Snowpark operations  
 - **Comprehensive Coverage**: Complete fact/dimension model with proper relationships
 
@@ -277,18 +278,40 @@ def build_fact_position_daily_abor(session: Session):
     """).collect()
 ```
 
-## Step 3: Real Data Integration (Preserved)
+## Step 3: Market Data Generation (Synthetic Only)
 
-### 3.1 Enhanced Real Market Data Integration
+### 3.1 Synthetic Market Data Generation
 ```python
-def build_fact_marketdata_with_real_prices(session: Session):
-    """Build market data using real OHLCV data with SecurityID mapping."""
+def build_fact_marketdata_timeseries(session: Session):
+    """Build synthetic market data for all securities with realistic patterns."""
     
-    if config.USE_REAL_MARKET_DATA and os.path.exists(config.REAL_MARKET_DATA_CSV_PATH):
-        # Load real market data CSV
-        real_market_df = pd.read_csv(config.REAL_MARKET_DATA_CSV_PATH)
-        real_market_snowpark_df = session.create_dataframe(real_market_df)
-        real_market_snowpark_df.write.mode("overwrite").save_as_table(f"{config.DATABASE_NAME}.RAW.TEMP_REAL_MARKET_DATA")
+    # Generate synthetic OHLCV data for all securities
+    session.sql(f"""
+        CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.FACT_MARKETDATA_TIMESERIES AS
+        WITH business_dates AS (
+            SELECT DATEADD(day, seq4(), DATEADD(year, -{config.YEARS_OF_HISTORY}, CURRENT_DATE())) as price_date
+            FROM TABLE(GENERATOR(rowcount => {365 * config.YEARS_OF_HISTORY}))
+            WHERE DAYOFWEEK(price_date) BETWEEN 2 AND 6
+        ),
+        securities_dates AS (
+            SELECT 
+                s.SecurityID,
+                bd.price_date as PriceDate
+            FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY s
+            CROSS JOIN business_dates bd
+        )
+        SELECT 
+            sd.PriceDate,
+            sd.SecurityID,
+            -- Generate realistic synthetic prices with volatility
+            UNIFORM(50, 500, RANDOM()) as Price_Close,
+            UNIFORM(50, 500, RANDOM()) as Price_Open,
+            UNIFORM(50, 500, RANDOM()) as Price_High,
+            UNIFORM(50, 500, RANDOM()) as Price_Low,
+            UNIFORM(1000, 1000000, RANDOM()) as Volume,
+            1.0 as TotalReturnFactor_Daily
+        FROM securities_dates sd
+    """).collect()
         
         # Build market data with SecurityID mapping
         session.sql(f"""
@@ -382,50 +405,14 @@ REAL_ASSET_ISSUER_MAPPING = {
 ```
 
 ### 4.2 Document Generation with Enhanced Model
-```python
-def generate_prompts(session: Session, document_types: List[str], test_mode: bool = False):
-    """Generate prompts using new SecurityID-based model."""
-    
-    # Query securities with issuer information
-    securities = session.sql(f"""
-        SELECT 
-            ds.SecurityID,
-            xref.IdentifierValue as TICKER,
-            ds.Description as COMPANY_NAME,
-            di.GICS_Sector,
-            ds.AssetClass,
-            di.CountryOfIncorporation,
-            di.IssuerID,
-            di.LegalName as ISSUER_NAME
-        FROM {config.DATABASE_NAME}.CURATED.DIM_SECURITY ds
-        JOIN {config.DATABASE_NAME}.CURATED.DIM_ISSUER di ON ds.IssuerID = di.IssuerID
-        JOIN {config.DATABASE_NAME}.CURATED.DIM_SECURITY_IDENTIFIER_XREF xref ON ds.SecurityID = xref.SecurityID
-        WHERE xref.IdentifierType = 'TICKER' 
-        AND xref.IsPrimaryForType = TRUE
-        AND ds.AssetClass = 'Equity'
-        ORDER BY xref.IdentifierValue
-    """).collect()
-    
-    # Generate prompts with SecurityID and IssuerID context
-    for doc_type in document_types:
-        if config.DOCUMENT_TYPES[doc_type]['linkage_level'] == 'security':
-            # Security-level documents
-            for security in securities:
-                prompt_data.append({
-                    'SecurityID': security['SECURITYID'],
-                    'IssuerID': security['ISSUERID'],
-                    'TICKER': security['TICKER'],
-                    # ... other fields
-                })
-        elif config.DOCUMENT_TYPES[doc_type]['linkage_level'] == 'issuer':
-            # Issuer-level documents (NGO reports, engagement notes)
-            for security in securities:
-                prompt_data.append({
-                    'SecurityID': None,  # Issuer-level
-                    'IssuerID': security['ISSUERID'],
-                    # ... other fields
-                })
-```
+
+**For complete unstructured data generation patterns, see @unstructured-data-generation.mdc**
+
+This section covers document corpus integration with the SecurityID-based model:
+- Security-level documents: Linked via SecurityID + IssuerID
+- Issuer-level documents: Linked via IssuerID only  
+- Global documents: No specific linkage required
+- All document types follow standardized patterns defined in the dedicated unstructured data generation rule
 
 ## Step 5: Data Quality and Validation
 

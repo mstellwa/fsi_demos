@@ -33,15 +33,15 @@ AVERAGE_MONTHLY_TRANSACTIONS_PER_SECURITY = 2.5
 PROVIDERS = ['NSD', 'PLM']  # NorthStar Data, PolarMetrics
 PROVIDER_MIX = {'NSD': 0.5, 'PLM': 0.5}
 
-# Data volumes (large profile) - adjusted for target distributions
-SECURITIES_COUNT = {'equities': 3500, 'bonds': 1000, 'etfs': 500}  # Adjusted for 70/20/10 by market value
+# Data volumes (real assets only) - based on available real data capacity
+SECURITIES_COUNT = {'equities': 10000, 'bonds': 3000, 'etfs': 1000}  # All real assets from OpenFIGI dataset
 
 # Test mode configuration (10% of full data for faster development testing)
 TEST_MODE_MULTIPLIER = 0.1
 TEST_SECURITIES_COUNT = {
-    'equities': int(SECURITIES_COUNT['equities'] * TEST_MODE_MULTIPLIER),    # 350
-    'bonds': int(SECURITIES_COUNT['bonds'] * TEST_MODE_MULTIPLIER),          # 100  
-    'etfs': int(SECURITIES_COUNT['etfs'] * TEST_MODE_MULTIPLIER)             # 50
+    'equities': int(SECURITIES_COUNT['equities'] * TEST_MODE_MULTIPLIER),    # 1000
+    'bonds': int(SECURITIES_COUNT['bonds'] * TEST_MODE_MULTIPLIER),          # 300  
+    'etfs': int(SECURITIES_COUNT['etfs'] * TEST_MODE_MULTIPLIER)             # 100
 }
 UNSTRUCTURED_COUNTS = {
     'broker_research': 3,      # Per equity
@@ -290,3 +290,7 @@ DOCUMENT_TYPES = {
         'linkage_level': 'global'
     }
 }
+
+# Market data configuration (synthetic only)
+USE_REAL_MARKET_DATA = False  # Disabled: Generate synthetic market data for all securities
+REAL_MARKET_DATA_CSV_PATH = None  # Not used in synthetic-only mode

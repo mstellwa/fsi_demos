@@ -248,40 +248,14 @@ def build_scenario_data(session: Session, scenario: str):
 ## Adding New Document Types
 
 ### Document Generation Pattern
-```python
-def generate_{document_type}_prompts(session: Session, test_mode: bool = False):
-    """Generate prompts for {document_type} documents."""
-    
-    # Get securities/issuers for document generation
-    entities = session.sql(f"""
-        SELECT {required_fields}
-        FROM {source_tables}
-        WHERE {filtering_conditions}
-        ORDER BY {prioritization_logic}
-        LIMIT {document_count if test_mode else full_count}
-    """).collect()
-    
-    prompts = []
-    for entity in entities:
-        prompts.append({
-            'document_type': '{DOCUMENT_TYPE}',
-            'entity_id': entity['{ID_FIELD}'],
-            'context': {
-                # Entity-specific context for LLM
-            },
-            'prompt': f"""
-            Create a {document_type} document for {entity_context}.
-            
-            Requirements:
-            - {specific_requirement_1}
-            - {specific_requirement_2}
-            - Length: {target_length}
-            - Style: {target_style}
-            """
-        })
-    
-    return prompts
-```
+
+**For complete unstructured data generation patterns, see @unstructured-data-generation.mdc**
+
+The dedicated unstructured data generation rule provides:
+- Standardized patterns for all 7 document types
+- Content quality requirements and validation
+- Proper SecurityID/IssuerID linkage patterns
+- Agent-specific content alignment guidelines
 
 ## Performance and Testing Patterns
 

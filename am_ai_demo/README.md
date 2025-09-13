@@ -1,6 +1,6 @@
-# Snowcrest Asset Management (SAM) AI Demo
+# Snowcrest Asset Management (SAM) AI Demo - 100% Real Assets
 
-A comprehensive demonstration of Snowflake Intelligence capabilities for asset management customers, featuring realistic multi-asset portfolios, AI-powered analytics, and intelligent agents.
+A comprehensive demonstration of Snowflake Intelligence capabilities for asset management customers, featuring 14,000+ authentic securities from OpenFIGI, realistic multi-asset portfolios, AI-powered analytics, and intelligent agents.
 
 ## Quick Start
 
@@ -9,7 +9,7 @@ A comprehensive demonstration of Snowflake Intelligence capabilities for asset m
 2. **Python Environment**: Python 3.10+ with snowflake-snowpark-python
 3. **Connection Configuration**: `~/.snowflake/connections.toml` properly configured
 4. **Snowflake Intelligence Enabled**: https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-intelligence#set-up-sf-intelligence
-5. **Optional**: Access to "Data Financials & Economics: Enterprise" dataset if going to use real data for assets and market prices.
+5. **Required**: Access to "Data Financials & Economics: Enterprise" dataset from Snowflake Marketplace for 100% real asset implementation.
 
 ### Install Dependencies
 ```bash
@@ -29,34 +29,34 @@ database = "SAM_DEMO"
 schema = "CURATED"
 ```
 
-### Build Demo Environment
+### Build Demo Environment (100% Real Assets)
 ```bash
-# Build everything (all scenarios)
+# STEP 1: Extract real assets (one-time setup - requires Marketplace access)
+python python/main.py --extract-real-assets
+
+# STEP 2: Build everything with 14,000 real securities (all scenarios)
 python python/main.py
 
-# Test mode: Build all scenarios with 10% data for faster development testing
+# Test mode: Build with 1,400 real securities for faster development testing
 python python/main.py --test-mode
 
 # Build specific scenarios only
-python python/main.py --scenarios portfolio_copilot,esg_guardian
+python python/main.py --scenarios portfolio_copilot,research_copilot
 
 # Build only data layer
 python python/main.py --scope data
-
-# Extract real assets from Snowflake Marketplace (requires Marketplace access)
-./data
 
 # Use custom connection
 python python/main.py --connection-name my_demo_connection
 ```
 
-### Using Real Asset Data (Optional Enhancement)
+### Real Asset Data Requirements
 
-The demo can use authentic financial instrument data from Snowflake Marketplace instead of generated tickers. This provides enhanced realism and authenticity for customer demonstrations.
+The demo uses 14,000+ authentic financial instruments from Snowflake Marketplace OpenFIGI dataset. This provides maximum realism and authenticity for customer demonstrations with 100% real Bloomberg identifiers.
 
 **Benefits of Real Data**:
 - ✅ **Authentic Tickers**: Global securities (AAPL, ASML, TSM, NESTLE, etc.)
-- ✅ **Real Market Data**: Authentic OHLCV prices and volumes from major US exchanges
+- ✅ **Synthetic Market Data**: Realistic OHLCV prices and volumes for all securities
 - ✅ **Geographic Distribution**: Proper coverage across USA/EU/APAC markets
 - ✅ **Market Behavior**: Real volatility patterns and trading characteristics
 - ✅ **Enhanced Credibility**: Customers see genuine market movements in portfolio performance
@@ -72,15 +72,8 @@ The demo can use authentic financial instrument data from Snowflake Marketplace 
 python python/main.py --extract-real-assets
 ```
 
-**Step 2: Extract Real Market Data** (optional, requires Marketplace access)
-```bash
-python python/main.py --extract-real-market-data
-```
-
-**Step 3: Enable Real Data Usage** (Already Enabled)
-Both `USE_REAL_ASSETS_CSV = True` and `USE_REAL_MARKET_DATA = True` are now defaults in `python/config.py`
-
-**Step 4: Build Demo**
+**Step 2: Build Demo** (Real Assets + Synthetic Market Data)
+Real assets are automatically used when available. Market data is generated synthetically for all securities to ensure consistent performance.
 ```bash
 python python/main.py --scenarios portfolio_copilot
 ```
@@ -115,13 +108,14 @@ python python/main.py --scenarios portfolio_copilot
 | **Connection** | `sfseeurope-mstellwall-aws-us-west3` | Default Snowflake connection |
 | **Model** | `llama3.1-70b` | LLM for content generation |
 | **History** | 5 years | Historical data range |
-| **Securities** | 500 total (test mode) | Enhanced SecurityID model with issuer hierarchies |
+| **Securities** | 14,000 real securities (1,400 test mode) | 100% authentic from OpenFIGI dataset |
+| **Issuers** | 3,303 real companies | Corporate hierarchies and relationships |
+| **Identifiers** | TICKER + Bloomberg FIGI | 100% authentic regulatory identifiers |
 | **Language** | UK English | All generated content and agent responses |
 | **Currency** | USD (fully hedged) | Base currency for all analytics |
 | **Returns** | Monthly | Performance calculation frequency |
-| **Providers** | NSD/PLM (50/50) | Simulated data provider mix |
-| **Real Assets** | ✅ Enabled | Uses authentic tickers from Snowflake Marketplace |
-| **Real Market Data** | ✅ Enabled | Uses authentic OHLCV prices from US exchanges |
+| **Real Assets** | ✅ Required | 14,000+ authentic securities from Snowflake Marketplace |
+| **Market Data** | Synthetic | Realistic OHLCV prices for all securities |
 | **Test Mode** | Available | 10% data volumes for faster development |
 | **Warehouses** | Dedicated | Separate warehouses for execution and Cortex Search |
 
@@ -169,9 +163,9 @@ python python/main.py --scenarios portfolio_copilot
 ## Key Features
 
 ### 🎯 **Realistic Data**
-- **Authentic Tickers**: 6,163 real securities from Snowflake Marketplace (AAPL, NVDA, ASML, TSM, NESTLE)
-- **Real Market Data**: 10,000+ authentic OHLCV records from major US exchanges (NASDAQ, NYSE, ARCA)
-- **Hybrid Pricing**: Real market movements for 21 securities, synthetic fallback for complete coverage
+- **Authentic Tickers**: 14,000+ real securities from Snowflake Marketplace (AAPL, NVDA, ASML, TSM, NESTLE)
+- **Synthetic Market Data**: Realistic OHLCV records for all 14,000+ securities with proper volatility patterns
+- **Consistent Pricing**: Synthetic market data with realistic volatility patterns for all securities
 - **Correlated Relationships**: P/E ratios align with growth, sector-specific factor scores
 - **Temporal Consistency**: Earnings dates align with transcripts, quarterly reporting cycles
 - **Complex Analytics**: Bond mathematics, ESG ratings, factor exposures, compliance monitoring

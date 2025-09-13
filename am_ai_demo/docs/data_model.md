@@ -1,6 +1,6 @@
-# SAM Demo - Data Model Documentation
+# SAM Demo - Data Model Documentation (100% Real Assets)
 
-Complete documentation of the enhanced data architecture, schemas, and relationships following industry-standard asset management practices.
+Complete documentation of the data architecture using 14,000+ authentic securities from Snowflake Marketplace OpenFIGI dataset following industry-standard asset management practices.
 
 ## Database Architecture
 
@@ -10,21 +10,22 @@ Complete documentation of the enhanced data architecture, schemas, and relations
 - **CURATED**: Industry-standard dimension/fact model ready for analysis
 - **AI**: Semantic views and Cortex Search services
 
-## Implementation Status
+## Implementation Status (100% Real Assets)
 
-✅ **Enhanced Foundation**: All tables created with industry-standard architecture  
-✅ **SecurityID Model**: Immutable identifiers with cross-reference table  
-✅ **Transaction-Based Holdings**: ABOR positions built from transaction log  
-✅ **Real Market Data**: 10,000+ authentic OHLCV records for 21 securities  
-✅ **AI Components**: Working semantic view + enhanced search services  
+✅ **14,000+ Real Securities**: All from authentic OpenFIGI dataset (no synthetic securities)  
+✅ **3,303 Real Issuers**: Corporate hierarchies from real companies  
+✅ **Authentic Identifiers**: TICKER + real Bloomberg FIGI identifiers only  
+✅ **Transaction-Based Holdings**: 27,000+ holdings using real securities  
+✅ **Synthetic Market Data**: 4M+ records with realistic volatility patterns  
+✅ **AI Components**: All semantic views and search services operational at scale  
 
 ## Enhanced Data Model (Industry Standard)
 
 ### Core Dimension Tables (CURATED Schema)
 ```sql
--- Master security dimension with immutable SecurityID
-DIM_SECURITY               -- 500 securities with immutable SecurityID
-DIM_ISSUER                 -- 50 issuers with corporate hierarchies
+-- Master security dimension with immutable SecurityID (100% Real)
+DIM_SECURITY               -- 14,000 real securities from OpenFIGI dataset
+DIM_ISSUER                 -- 3,303 real issuers with corporate hierarchies
 DIM_SECURITY_IDENTIFIER_XREF -- Security identifier cross-reference (TICKER, FIGI)
 DIM_PORTFOLIO              -- 10 portfolios with enhanced information
 DIM_BENCHMARK              -- 3 benchmarks (S&P 500, MSCI ACWI, Nasdaq 100)
@@ -35,7 +36,7 @@ DIM_BENCHMARK              -- 3 benchmarks (S&P 500, MSCI ACWI, Nasdaq 100)
 -- Transaction-based model (source of truth)
 FACT_TRANSACTION           -- Canonical transaction log with 12 months history
 FACT_POSITION_DAILY_ABOR   -- ABOR positions built from transactions
-FACT_MARKETDATA_TIMESERIES -- Enhanced market data with real data integration
+FACT_MARKETDATA_TIMESERIES -- Synthetic market data with realistic volatility patterns
 
 -- Additional analytics tables
 FA_FUNDAMENTALS           -- Quarterly financial metrics (placeholder)

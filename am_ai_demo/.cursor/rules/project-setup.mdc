@@ -37,8 +37,7 @@ Project structure, configuration management, and setup procedures for the SAM AI
 │   ├── build_ai.py            # AI components (semantic views, search services)
 │   └── extract_real_assets.py # Real asset data extraction from Marketplace
 ├── data/                      # Real asset data storage
-│   ├── real_assets.csv        # Real asset data from Snowflake Marketplace
-│   └── real_market_data.csv   # Real OHLCV data from Snowflake Marketplace
+│   └── real_assets.csv        # Real securities data from Snowflake Marketplace
 ├── research/                  # Research documents and analysis
 │   └── [research files...]    # Industry research and model documentation
 └── README.md                  # Quick setup guide
@@ -75,8 +74,8 @@ PROVIDER_MIX = {'NSD': 0.5, 'PLM': 0.5}
 # Real asset integration
 USE_REAL_ASSETS_CSV = True
 REAL_ASSETS_CSV_PATH = './data/real_assets.csv'
-USE_REAL_MARKET_DATA = True
-REAL_MARKET_DATA_CSV_PATH = './data/real_market_data.csv'
+# Market data: Synthetic generation for all securities
+USE_REAL_MARKET_DATA = False
 
 # Enhanced real asset to issuer mapping
 REAL_ASSET_ISSUER_MAPPING = {
@@ -106,7 +105,6 @@ REAL_ASSET_ISSUER_MAPPING = {
 - `--scenarios` (optional): Comma-separated list of scenarios to build
 - `--scope` (optional): `all|data|semantic|search` (default: `all`)
 - `--extract-real-assets` (optional): Extract real asset data from Marketplace
-- `--extract-real-market-data` (optional): Extract real market data (OHLCV) from Marketplace
 - `--test-mode` (optional): Use 10% data volumes for faster development testing
 
 **Examples**:
@@ -126,8 +124,8 @@ python main.py --test-mode
 # Extract real assets (requires Marketplace access)
 python main.py --extract-real-assets
 
-# Extract real market data (requires Marketplace access)
-python main.py --extract-real-market-data
+# Build with synthetic market data (default behavior)
+python main.py --scenarios portfolio_copilot
 
 # Build only data layer
 python main.py --scope data
@@ -136,7 +134,7 @@ python main.py --scope data
 ### Test Mode for Development
 **Purpose**: Faster builds during development and testing
 **Usage**: `--test-mode` flag
-**Data Reduction**: 10% of full data volumes (500 vs 5,000 securities, 205 vs 3,463 documents)
+**Data Reduction**: 10% of full data volumes (1,400 vs 14,000 securities, 205 vs 3,463 documents)
 **Use Cases**: Code development, testing changes, validating functionality
 **Performance**: Significantly faster build times while maintaining all functionality
 
@@ -166,25 +164,28 @@ FACT_MARKETDATA_TIMESERIES    -- Enhanced market data with real data integration
 {DOCUMENT_TYPE}_CORPUS        -- Documents linked via SecurityID and IssuerID
 ```
 
-### Enhanced Capabilities
+### Enhanced Capabilities (100% Real Assets)
+- **14,000+ Real Securities**: All from authentic OpenFIGI dataset (10K equities + 3K bonds + 1K ETFs)
+- **Authentic Identifiers**: TICKER + real Bloomberg FIGI identifiers only
 - **Immutable SecurityID**: Corporate action resilience and temporal integrity
 - **Transaction Audit Trail**: Complete history for compliance and reconciliation
-- **Issuer Hierarchies**: Corporate structure and parent company analysis
-- **Enhanced Document Integration**: Stable SecurityID/IssuerID linkage
-- **Real Data Integration**: Authentic market data with synthetic fallback
-- **Industry-Standard Architecture**: Professional asset management data model
+- **Issuer Hierarchies**: 3,303 real issuers with corporate structure relationships
+- **Enhanced Document Integration**: Stable SecurityID/IssuerID linkage to real securities
+- **Industry-Standard Architecture**: Professional asset management data model at scale
 
 ## Development Phases and Progress Tracking
 
 ### Current Implementation Status (Updated 2025-01-15)
 
-#### ✅ **Phase 1: Foundation Complete** (portfolio_copilot)
-**Status**: Fully implemented and operational
-- ✅ Enhanced data model with real asset integration (79,186 issuers, 500 securities)
-- ✅ Transaction-based holdings with major US stock prioritization
+#### ✅ **Phase 1: Foundation Complete** (portfolio_copilot) - **100% Real Assets**
+**Status**: Fully implemented and operational with 14,000+ real securities
+- ✅ **100% Real Securities**: 14,000 authentic securities from OpenFIGI (10K equities + 3K bonds + 1K ETFs)
+- ✅ **Authentic Identifiers**: All 14,000 securities have real Bloomberg FIGI identifiers
+- ✅ **3,303 Real Issuers**: Corporate hierarchies and relationships from real companies
+- ✅ Transaction-based holdings with major US stock prioritization (real tickers)
 - ✅ 3 Cortex Search services (broker_research, earnings_transcripts, press_releases)
 - ✅ 2 Semantic views (SAM_ANALYST_VIEW, SAM_RESEARCH_VIEW)
-- ✅ ESG scores with sector/regional differentiation
+- ✅ ESG scores with sector/regional differentiation (scaled to 14K securities)
 - ✅ Factor exposures with sector-specific characteristics
 - ✅ Benchmark holdings with realistic index compositions
 - ✅ Real market data integration (4M+ records with real/synthetic blend)

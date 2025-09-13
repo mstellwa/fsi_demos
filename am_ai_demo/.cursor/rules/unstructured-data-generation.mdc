@@ -1,0 +1,507 @@
+---
+alwaysApply: true
+---
+
+# SAM Demo - Unstructured Data Generation Rules
+
+Complete patterns and standards for generating realistic unstructured documents across all document types in the SAM demo. This is the **single source of truth** for document generation patterns.
+
+## Overview
+
+This guide provides standardized patterns for generating 7 document types that support the SAM demo scenarios, ensuring consistency, realism, and proper integration with the SecurityID-based data model.
+
+**Document Categories:**
+- **Security-Level**: broker_research, earnings_transcripts, press_releases
+- **Issuer-Level**: ngo_reports, engagement_notes  
+- **Global**: policy_docs, sales_templates, philosophy_docs
+
+**Key Principles:**
+- **Realistic Content**: Industry-appropriate language and structure
+- **Proper Linkage**: SecurityID/IssuerID integration for search and analytics
+- **Consistent Quality**: Standardized word counts and formatting
+- **Demo Alignment**: Content supports specific agent scenarios
+
+## Document Type Specifications
+
+### Security-Level Documents (Linked to Securities)
+
+#### **1. Broker Research Reports**
+```yaml
+Document Type: broker_research
+Table: BROKER_RESEARCH_RAW → BROKER_RESEARCH_CORPUS
+Search Service: SAM_BROKER_RESEARCH
+Word Count: 700-1,200 words
+Applies To: All equity securities
+Linkage: SecurityID + IssuerID
+```
+
+**Content Pattern:**
+```
+Title: [Company Name] ([TICKER]) - [Rating] - [Price Target]
+Structure:
+- Executive Summary (100-150 words)
+- Investment Thesis (200-300 words) 
+- Financial Analysis (200-300 words)
+- Risks and Catalysts (150-200 words)
+- Valuation and Rating (100-150 words)
+
+Key Elements:
+- Buy/Hold/Sell recommendation
+- 12-month price target
+- Sector-specific analysis
+- ESG considerations (when relevant)
+- Quarterly earnings context
+```
+
+**Prompt Template:**
+```
+Create a professional equity research report for {COMPANY_NAME} ({TICKER}) in the {GICS_SECTOR} sector.
+
+Requirements:
+- Professional investment research tone
+- Include buy/hold/sell recommendation with rationale
+- 12-month price target with valuation methodology
+- Sector-specific competitive analysis
+- ESG factors relevant to the industry
+- Reference recent quarterly performance
+- Target length: 700-1200 words
+- Use UK English spelling and financial terminology
+```
+
+#### **2. Earnings Transcripts**
+```yaml
+Document Type: earnings_transcripts
+Table: EARNINGS_TRANSCRIPTS_RAW → EARNINGS_TRANSCRIPTS_CORPUS
+Search Service: SAM_EARNINGS_TRANSCRIPTS
+Word Count: 6,000-10,000 words
+Applies To: All equity securities
+Linkage: SecurityID + IssuerID
+```
+
+**Content Pattern:**
+```
+Title: [Company Name] Q[X] [YYYY] Earnings Call Transcript
+Structure:
+- Operator Introduction (200-300 words)
+- CEO Prepared Remarks (1,500-2,000 words)
+- CFO Financial Review (1,000-1,500 words)
+- Q&A Session (3,000-5,000 words)
+- Closing Remarks (200-300 words)
+
+Key Elements:
+- Quarterly financial results
+- Forward guidance
+- Strategic initiatives
+- Market conditions commentary
+- Analyst questions and management responses
+```
+
+**Prompt Template:**
+```
+Create a realistic quarterly earnings call transcript for {COMPANY_NAME} ({TICKER}).
+
+Requirements:
+- Formal earnings call structure with CEO/CFO remarks and Q&A
+- Specific financial metrics and guidance
+- Industry-relevant strategic initiatives
+- Realistic analyst questions covering key investor concerns
+- Professional corporate communication tone
+- Target length: 6000-10000 words
+- Include forward-looking statements disclaimer
+```
+
+#### **3. Press Releases**
+```yaml
+Document Type: press_releases
+Table: PRESS_RELEASES_RAW → PRESS_RELEASES_CORPUS
+Search Service: SAM_PRESS_RELEASES
+Word Count: 250-400 words
+Applies To: All equity securities
+Linkage: SecurityID + IssuerID
+```
+
+**Content Pattern:**
+```
+Title: [Company Name] [Announces/Reports/Launches] [News Item]
+Structure:
+- Headline and dateline (1 line)
+- Lead paragraph with key facts (50-75 words)
+- Supporting details (100-150 words)
+- Executive quote (50-75 words)
+- Company boilerplate (50-75 words)
+
+Key Elements:
+- Corporate announcements
+- Product launches
+- Partnership agreements
+- Financial milestones
+- Executive quotes
+```
+
+### Issuer-Level Documents (Linked to Issuers)
+
+#### **4. NGO Reports**
+```yaml
+Document Type: ngo_reports
+Table: NGO_REPORTS_RAW → NGO_REPORTS_CORPUS
+Search Service: SAM_NGO_REPORTS
+Word Count: 400-800 words
+Applies To: Issuers (companies)
+Linkage: IssuerID only
+```
+
+**Content Pattern:**
+```
+Title: [NGO Name] Report: [Company Name] [ESG Issue]
+Structure:
+- Executive Summary (100-150 words)
+- Issue Background (150-200 words)
+- Company Assessment (200-300 words)
+- Recommendations (100-150 words)
+
+Key Elements:
+- Environmental, social, or governance concerns
+- Factual assessment of company practices
+- Severity ratings (Low/Medium/High)
+- Actionable recommendations
+- NGO credibility and methodology
+```
+
+#### **5. Engagement Notes**
+```yaml
+Document Type: engagement_notes
+Table: ENGAGEMENT_NOTES_RAW → ENGAGEMENT_NOTES_CORPUS
+Search Service: SAM_ENGAGEMENT_NOTES
+Word Count: 150-300 words
+Applies To: Issuers (companies)
+Linkage: IssuerID only
+```
+
+**Content Pattern:**
+```
+Title: Engagement Note: [Company Name] - [Topic] - [Date]
+Structure:
+- Meeting Overview (50-75 words)
+- Key Discussion Points (75-125 words)
+- Outcomes and Next Steps (50-75 words)
+
+Key Elements:
+- ESG engagement activities
+- Stewardship conversations
+- Proxy voting rationale
+- Follow-up actions
+- Internal assessment notes
+```
+
+### Global Documents (No Linkage)
+
+#### **6. Policy Documents**
+```yaml
+Document Type: policy_docs
+Table: POLICY_DOCS_RAW → POLICY_DOCS_CORPUS
+Search Service: SAM_POLICY_DOCS
+Word Count: 800-1,500 words
+Applies To: Global (no specific linkage)
+Linkage: None (global documents)
+```
+
+**Content Pattern:**
+```
+Title: [Policy Area] Policy - [Specific Topic]
+Structure:
+- Policy Statement (200-300 words)
+- Scope and Application (200-300 words)
+- Implementation Guidelines (300-500 words)
+- Monitoring and Review (200-300 words)
+
+Key Elements:
+- ESG investment policies
+- Risk management frameworks
+- Compliance procedures
+- Exclusion criteria
+- Monitoring processes
+```
+
+#### **7. Sales Templates**
+```yaml
+Document Type: sales_templates
+Table: SALES_TEMPLATES_RAW → SALES_TEMPLATES_CORPUS
+Search Service: SAM_SALES_TEMPLATES
+Word Count: 800-1,500 words
+Applies To: Global (no specific linkage)
+Linkage: None (global documents)
+```
+
+**Content Pattern:**
+```
+Title: [Template Type] - [Use Case]
+Structure:
+- Template Overview (200-300 words)
+- Key Messages (300-500 words)
+- Supporting Data Points (200-400 words)
+- Customization Guidelines (200-300 words)
+
+Key Elements:
+- Client presentation materials
+- Investment strategy explanations
+- Performance attribution templates
+- Risk disclosure language
+- Compliance-approved messaging
+```
+
+#### **8. Philosophy Documents**
+```yaml
+Document Type: philosophy_docs
+Table: PHILOSOPHY_DOCS_RAW → PHILOSOPHY_DOCS_CORPUS
+Search Service: SAM_PHILOSOPHY_DOCS
+Word Count: 800-1,500 words
+Applies To: Global (no specific linkage)
+Linkage: None (global documents)
+```
+
+**Content Pattern:**
+```
+Title: [Investment Philosophy] - [Strategy Area]
+Structure:
+- Philosophy Statement (200-300 words)
+- Investment Approach (300-500 words)
+- Risk Management (200-300 words)
+- Performance Expectations (200-300 words)
+
+Key Elements:
+- Investment beliefs and principles
+- Strategy methodologies
+- Risk-return expectations
+- ESG integration approach
+- Long-term value creation
+```
+
+## Implementation Patterns
+
+### 1. Prompt Generation Pattern
+```python
+def generate_{document_type}_prompts(session: Session, entities: List[dict], test_mode: bool = False):
+    """Generate prompts for {document_type} documents."""
+    
+    prompts = []
+    target_count = config.TEST_UNSTRUCTURED_COUNTS['{document_type}'] if test_mode else config.UNSTRUCTURED_COUNTS['{document_type}']
+    
+    for entity in entities[:target_count]:
+        # Extract entity-specific context
+        context = extract_entity_context(entity, '{document_type}')
+        
+        # Generate document-specific prompt
+        prompt = create_document_prompt(context, '{document_type}')
+        
+        prompts.append({
+            'prompt_id': str(uuid.uuid4()),
+            'document_type': '{document_type}',
+            'entity_id': entity.get('SecurityID') or entity.get('IssuerID'),
+            'entity_type': determine_entity_type('{document_type}'),
+            'prompt_text': prompt,
+            'word_count_target': random.randint(*config.DOCUMENT_TYPES['{document_type}']['word_count_range']),
+            'created_date': datetime.now()
+        })
+    
+    return prompts
+```
+
+### 2. Content Generation Pattern
+```python
+def generate_{document_type}_content(session: Session):
+    """Generate content for {document_type} using Cortex Complete."""
+    
+    session.sql(f"""
+        CREATE OR REPLACE TABLE {config.DATABASE_NAME}.RAW.{config.DOCUMENT_TYPES['{document_type}']['table_name']} AS
+        SELECT 
+            prompt_id as DOCUMENT_ID,
+            SNOWFLAKE.CORTEX.COMPLETE(
+                '{config.MODEL_NAME}',
+                prompt_text
+            ) as DOCUMENT_TEXT,
+            entity_id,
+            entity_type,
+            word_count_target,
+            created_date as GENERATED_DATE
+        FROM {config.DATABASE_NAME}.RAW.GENERATION_PROMPTS
+        WHERE document_type = '{document_type}'
+    """).collect()
+```
+
+### 3. Corpus Creation Pattern
+```python
+def create_{document_type}_corpus(session: Session):
+    """Create normalized corpus table for {document_type}."""
+    
+    linkage_config = config.DOCUMENT_TYPES['{document_type}']
+    
+    if linkage_config['linkage_level'] == 'security':
+        # Security-level linkage
+        linkage_columns = "SecurityID, IssuerID"
+        linkage_join = "entity_id as SecurityID, s.IssuerID"
+        join_clause = "LEFT JOIN SAM_DEMO.CURATED.DIM_SECURITY s ON entity_id = s.SecurityID"
+    elif linkage_config['linkage_level'] == 'issuer':
+        # Issuer-level linkage
+        linkage_columns = "IssuerID"
+        linkage_join = "entity_id as IssuerID"
+        join_clause = ""
+    else:
+        # Global documents (no linkage)
+        linkage_columns = ""
+        linkage_join = "NULL as SecurityID, NULL as IssuerID"
+        join_clause = ""
+    
+    session.sql(f"""
+        CREATE OR REPLACE TABLE {config.DATABASE_NAME}.CURATED.{linkage_config['corpus_name']} AS
+        SELECT 
+            DOCUMENT_ID,
+            REGEXP_REPLACE(SPLIT_PART(DOCUMENT_TEXT, '\\n', 1), '[^a-zA-Z0-9\\s\\-\\(\\)\\:]', '') as DOCUMENT_TITLE,
+            '{document_type.upper()}' as DOCUMENT_TYPE,
+            {linkage_join},
+            GENERATED_DATE as PUBLISH_DATE,
+            'en' as LANGUAGE,
+            DOCUMENT_TEXT
+        FROM {config.DATABASE_NAME}.RAW.{linkage_config['table_name']} raw
+        {join_clause}
+        WHERE DOCUMENT_TEXT IS NOT NULL 
+        AND LENGTH(DOCUMENT_TEXT) > 100
+    """).collect()
+```
+
+## Quality Standards
+
+### Content Quality Requirements
+- **Realistic Language**: Industry-appropriate terminology and tone
+- **Factual Consistency**: Align with company/sector characteristics
+- **Proper Structure**: Follow document type formatting standards
+- **Word Count Compliance**: Stay within specified ranges
+- **UK English**: Consistent spelling and terminology
+
+### Technical Requirements
+- **Unique IDs**: UUID-based document identifiers
+- **Proper Linkage**: Correct SecurityID/IssuerID associations
+- **Clean Titles**: Extract meaningful titles from content
+- **Date Consistency**: Realistic publication dates
+- **Language Tagging**: Consistent 'en' language designation
+
+### Validation Patterns
+```python
+def validate_{document_type}_quality(session: Session):
+    """Validate quality of generated {document_type} documents."""
+    
+    # Check document count
+    count_check = session.sql(f"""
+        SELECT COUNT(*) as doc_count 
+        FROM {config.DATABASE_NAME}.CURATED.{config.DOCUMENT_TYPES['{document_type}']['corpus_name']}
+    """).collect()[0]['DOC_COUNT']
+    
+    # Check word count distribution
+    word_count_check = session.sql(f"""
+        SELECT 
+            AVG(LENGTH(DOCUMENT_TEXT) - LENGTH(REPLACE(DOCUMENT_TEXT, ' ', '')) + 1) as avg_words,
+            MIN(LENGTH(DOCUMENT_TEXT) - LENGTH(REPLACE(DOCUMENT_TEXT, ' ', '')) + 1) as min_words,
+            MAX(LENGTH(DOCUMENT_TEXT) - LENGTH(REPLACE(DOCUMENT_TEXT, ' ', '')) + 1) as max_words
+        FROM {config.DATABASE_NAME}.CURATED.{config.DOCUMENT_TYPES['{document_type}']['corpus_name']}
+    """).collect()[0]
+    
+    # Check linkage integrity
+    if config.DOCUMENT_TYPES['{document_type}']['linkage_level'] != 'global':
+        linkage_check = session.sql(f"""
+            SELECT COUNT(*) as unlinked_docs
+            FROM {config.DATABASE_NAME}.CURATED.{config.DOCUMENT_TYPES['{document_type}']['corpus_name']}
+            WHERE {get_linkage_column('{document_type}')} IS NULL
+        """).collect()[0]['UNLINKED_DOCS']
+        
+        assert linkage_check == 0, f"Found {linkage_check} unlinked documents"
+    
+    print(f"✅ {document_type} quality validation passed: {count_check} documents")
+```
+
+## Document Type Usage by Agent
+
+### Agent-Document Mapping
+```python
+# From config.py - SCENARIO_DATA_REQUIREMENTS
+AGENT_DOCUMENT_USAGE = {
+    'portfolio_copilot': ['broker_research', 'earnings_transcripts', 'press_releases'],
+    'research_copilot': ['broker_research', 'earnings_transcripts'],
+    'thematic_macro_advisor': ['broker_research', 'press_releases'],
+    'esg_guardian': ['ngo_reports', 'engagement_notes', 'policy_docs'],
+    'sales_advisor': ['sales_templates', 'philosophy_docs', 'policy_docs'],
+    'quant_analyst': ['broker_research', 'earnings_transcripts'],
+    'compliance_advisor': ['policy_docs', 'engagement_notes']
+}
+```
+
+### Content Alignment Requirements
+- **Portfolio Copilot**: Research must align with portfolio holdings (major stocks prioritized)
+- **ESG Guardian**: NGO reports must cover portfolio companies with ESG issues
+- **Sales Advisor**: Templates must reflect actual investment strategies and policies
+- **Research Copilot**: Comprehensive coverage across sectors and geographies
+- **Compliance Advisor**: Policies must address real regulatory requirements
+
+## Error Handling and Fallbacks
+
+### Generation Failures
+```python
+def handle_generation_failure(document_type: str, entity_id: str, error: Exception):
+    """Handle document generation failures gracefully."""
+    
+    print(f"⚠️ Failed to generate {document_type} for entity {entity_id}: {error}")
+    
+    # Log failure for analysis
+    log_generation_failure(document_type, entity_id, str(error))
+    
+    # Continue with remaining documents (don't fail entire batch)
+    return None
+```
+
+### Content Quality Issues
+```python
+def validate_generated_content(content: str, document_type: str) -> bool:
+    """Validate generated content meets quality standards."""
+    
+    if not content or len(content.strip()) < 100:
+        return False
+    
+    word_count = len(content.split())
+    min_words, max_words = config.DOCUMENT_TYPES[document_type]['word_count_range']
+    
+    if word_count < min_words * 0.8 or word_count > max_words * 1.2:
+        return False
+    
+    # Check for common generation issues
+    if content.count('I cannot') > 0 or content.count('I apologize') > 0:
+        return False
+    
+    return True
+```
+
+## Performance Optimization
+
+### Batch Processing
+- **Prompt Generation**: Process entities in batches of 100
+- **Content Generation**: Use SQL-based Cortex Complete for efficiency
+- **Corpus Creation**: Single SQL operation per document type
+- **Validation**: Batch validation queries
+
+### Memory Management
+- **Avoid Large DataFrames**: Use SQL-first approach
+- **Stream Processing**: Process document types sequentially
+- **Cleanup**: Drop temporary tables after processing
+- **Error Recovery**: Continue processing on individual failures
+
+## Summary
+
+This rule provides the complete framework for generating consistent, realistic unstructured documents across all SAM demo scenarios. Follow these patterns to ensure:
+
+- **Consistency**: Standardized structure and quality across document types
+- **Realism**: Industry-appropriate content and terminology
+- **Integration**: Proper linkage with SecurityID-based data model
+- **Performance**: Efficient generation and processing patterns
+- **Quality**: Comprehensive validation and error handling
+
+**Related Files**:
+- Implementation: `python/generate_unstructured.py`
+- Configuration: `python/config.py` (DOCUMENT_TYPES section)
+- Agent Integration: See @agent-config.mdc for agent-document mappings

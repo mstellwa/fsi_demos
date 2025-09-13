@@ -60,11 +60,6 @@ def parse_arguments() -> argparse.Namespace:
         action='store_true',
         help='Extract real asset data from Snowflake Marketplace and save to CSV (requires marketplace access)'
     )
-    parser.add_argument(
-        '--extract-real-market-data',
-        action='store_true',
-        help='Extract real market data (OHLCV) from Snowflake Marketplace for US securities (requires marketplace access)'
-    )
     
     parser.add_argument(
         '--test-mode',
@@ -188,19 +183,6 @@ def main():
             print("💡 To use real assets in future builds, set USE_REAL_ASSETS_CSV = True in config.py")
         else:
             print("❌ Real asset extraction failed - continuing with generated data")
-        print()
-        return  # Exit after extraction
-    
-    # Handle real market data extraction if requested
-    if args.extract_real_market_data:
-        print("📈 Extracting real market data from Snowflake Marketplace...")
-        import extract_real_assets
-        success = extract_real_assets.extract_real_market_data(session)
-        if success:
-            print("✅ Real market data extracted successfully")
-            print("💡 Market data will be used automatically when USE_REAL_MARKET_DATA = True in config.py")
-        else:
-            print("❌ Real market data extraction failed - continuing with synthetic data")
         print()
         return  # Exit after extraction
     
